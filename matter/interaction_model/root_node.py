@@ -710,7 +710,7 @@ class OperationalCredentials(cluster.Cluster):
             node_id = next(filter(lambda a: a.variant == "matter-node-id", noc_cert.subject)).value
 
             self.candidate_fabric_idx = fabric_idx
-            if isinstance(session, message.SecureSessionContext) and session.session_type == message.SecureSessionType.PASE:
+            if session.local_fabric_index == 0:
                 session.local_fabric_index = fabric_idx
             fabric = device.Fabric(
                 root_public_key=root_public_key,

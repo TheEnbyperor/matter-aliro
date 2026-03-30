@@ -2,6 +2,8 @@ import base64
 import logging
 import pathlib
 import os.path
+import secrets
+
 import qrcode
 import dataclasses
 import cryptography.x509
@@ -35,6 +37,7 @@ class AliroReaderConfig:
     signing_key: bytes
     verification_key: bytes
     group_identifier: bytes
+    sub_group_identifier: bytes
 
 class DoorLockDevice(matter.interaction_model.Endpoint):
     DEVICE_TYPES = {matter.interaction_model.DeviceType(id=0x000A, revision=3)}
@@ -217,6 +220,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                     signing_key=base64.b64decode(state["aliro_reader_config"]["signing_key"]),
                     verification_key=base64.b64decode(state["aliro_reader_config"]["verification_key"]),
                     group_identifier=base64.b64decode(state["aliro_reader_config"]["group_identifier"]),
+                    sub_group_identifier=base64.b64decode(state["aliro_reader_config"]["sub_group_identifier"]),
                 )
             else:
                 self.aliro_reader_config = None
@@ -261,6 +265,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 "signing_key": base64.b64encode(self.aliro_reader_config.signing_key).decode("ascii"),
                 "verification_key": base64.b64encode(self.aliro_reader_config.verification_key).decode("ascii"),
                 "group_identifier": base64.b64encode(self.aliro_reader_config.group_identifier).decode("ascii"),
+                "sub_group_identifier": base64.b64encode(self.aliro_reader_config.sub_group_identifier).decode("ascii"),
             } if self.aliro_reader_config else None
         })
 
@@ -312,7 +317,10 @@ class DoorLockCluster(matter.interaction_model.Cluster):
 
     @aliro_reader_group_sub_identifier.reader
     def read_aliro_reader_group_sub_identifier(self):
-        return None
+        if self.aliro_reader_config:
+            return self.aliro_reader_config.sub_group_identifier
+        else:
+            return None
 
     @aliro_expedited_transaction_supported_protocol_versions.reader
     def read_aliro_expedited_transaction_supported_protocol_versions(self):
@@ -794,6 +802,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
             signing_key=req.signing_key,
             verification_key=req.verification_key,
             group_identifier=req.group_identifier,
+            sub_group_identifier=secrets.token_bytes(16),
         )
         self.save_state()
         self.increment_data_version()
