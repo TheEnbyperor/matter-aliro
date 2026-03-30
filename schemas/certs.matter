@@ -1,0 +1,102 @@
+signature-algorithm => UNSIGNED INTEGER [ range 8-bits ] {
+	ecdsa-with-sha256 = 1
+}
+
+dn-attribute => CHOICE OF {
+	// Standard and Matter-specific DN attributes.
+	// Of these, all are encoded as UTF8String except domain-component,
+	// which is encoded as IA5String in X.509 form.
+	common-name [1] : STRING,
+	surname [2] : STRING,
+	serial-num [3] : STRING,
+	country-name [4] : STRING,
+	locality-name [5] : STRING,
+	state-or-province-name [6] : STRING,
+	org-name [7] : STRING,
+	org-unit-name [8] : STRING,
+	title [9] : STRING,
+	name [10] : STRING,
+	given-name [11] : STRING,
+	initials [12] : STRING,
+	gen-qualifier [13] : STRING,
+	dn-qualifier [14] : STRING,
+	pseudonym [15] : STRING,
+	domain-component [16] : STRING,
+	matter-node-id [17] : UNSIGNED INTEGER,
+	matter-firmware-signing-id [18] : UNSIGNED INTEGER,
+	matter-icac-id [19] : UNSIGNED INTEGER,
+	matter-rcac-id [20] : UNSIGNED INTEGER,
+	matter-fabric-id [21] : UNSIGNED INTEGER,
+	matter-noc-cat [22] : UNSIGNED INTEGER,
+	matter-vvs-id [23] : UNSIGNED INTEGER,
+
+	// Standard DN attributes when encoded as PrintableString in X.509 form
+	// NOTE: The tags for these SHALL be the base tags + 0x80.
+	common-name-ps [129] : STRING,
+	surname-ps [130] : STRING,
+	serial-num-ps [131] : STRING,
+	country-name-ps [132] : STRING,
+	locality-name-ps [133] : STRING,
+	state-or-province-name-ps [134] : STRING,
+	org-name-ps [135] : STRING,
+	org-unit-name-ps [136] : STRING,
+	title-ps [137] : STRING,
+	name-ps [138] : STRING,
+	given-name-ps [139] : STRING,
+	initials-ps [140] : STRING,
+	gen-qualifier-ps [141] : STRING,
+	dn-qualifier-ps [142] : STRING,
+	pseudonym-ps [143] : STRING,
+}
+
+public-key-algorithm => UNSIGNED INTEGER [ range 8-bits ] {
+	ec-pub-key = 1
+}
+
+elliptic-curve-id => UNSIGNED INTEGER [ range 8-bits ] {
+	prime256v1 = 1
+}
+
+basic-constraints => STRUCTURE [tag-order] {
+	is-ca [1] : BOOLEAN,
+	path-len-constraint [2, optional] : UNSIGNED INTEGER [ range 8-bits ]
+}
+
+key-usage-flag => UNSIGNED INTEGER [ range 16-bits ] {
+	digitalSignature = 0x0001,
+	nonRepudiation = 0x0002,
+	keyEncipherment = 0x0004,
+	dataEncipherment = 0x0008,
+	keyAgreement = 0x0010,
+	keyCertSign = 0x0020,
+	CRLSign = 0x0040,
+	encipherOnly = 0x0080,
+	decipherOnly = 0x0100
+}
+
+key-purpose-id => UNSIGNED INTEGER [ range 8-bits ]
+
+extension => CHOICE OF {
+	basic-cnstr [1] : basic-constraints,
+	key-usage [2] : UNSIGNED INTEGER [ range 16-bits ],
+	extended-key-usage [3] : ARRAY [ length 1.. ] OF key-purpose-id,
+	subject-key-id [4] : OCTET STRING [ length 20 ],
+	authority-key-id [5] : OCTET STRING [ length 20 ],
+	future-extension [6] : OCTET STRING,
+}
+
+ec-signature => OCTET STRING [ length 64 ]
+
+matter-certificate => STRUCTURE [ tag-order ] {
+	serial-num [1] : OCTET STRING [ length 0..20 ],
+	sig-algo [2] : signature-algorithm,
+	issuer [3] : LIST [ length 1.. ] OF dn-attribute,
+	not-before [4] : UNSIGNED INTEGER [ range 32-bits ],
+	not-after [5] : UNSIGNED INTEGER [ range 32-bits ],
+	subject [6] : LIST [ length 1.. ] OF dn-attribute,
+	pub-key-algo [7] : public-key-algorithm,
+	ec-curve-id [8] : elliptic-curve-id,
+	ec-pub-key [9] : OCTET STRING,
+	extensions [10] : LIST [ length 1.. ] OF extension,
+	signature [11] : ec-signature
+}

@@ -1,0 +1,107 @@
+secure-channel => PROTOCOL [ id 0x0000:0x0000 ] {
+	session-parameter-struct => STRUCTURE [ tag-order ] {
+		SESSION_IDLE_INTERVAL [1, optional] : UNSIGNED INTEGER [ range 32-bits ],
+		SESSION_ACTIVE_INTERVAL [2, optional] : UNSIGNED INTEGER [ range 32-bits ],
+		SESSION_ACTIVE_THRESHOLD [3, optional] : UNSIGNED INTEGER [ range 16-bits ],
+		DATA_MODEL_REVISION [4, optional] : UNSIGNED INTEGER [ range 16-bits ],
+		INTERACTION_MODEL_REVISION [5, optional] : UNSIGNED INTEGER [ range 16-bits ],
+		SPECIFICATION_VERSION [6, optional] : UNSIGNED INTEGER [ range 32-bits ],
+		MAX_PATHS_PER_INVOKE [7, optional] : UNSIGNED INTEGER [ range 16-bits ],
+		SUPPORTED_TRANSPORTS [8, optional] : UNSIGNED INTEGER [ range 16-bits ],
+		MAX_TCP_MESSAGE_SIZE [9, optional] : UNSIGNED INTEGER [ range 32-bits ],
+	}
+
+	ec-pub-key => OCTET STRING [ length 65 ] /* CRYPTO_PUBLIC_KEY_SIZE_BYTES */
+	ec-signature => OCTET STRING [ length 64 ] /* (CRYPTO_GROUP_SIZE_BYTES * 2) */
+	destination-identifier => OCTET STRING [ length 32 ] /* CRYPTO_HASH_LEN_BYTES */
+
+	Crypto_PBKDFParameterSet => STRUCTURE [ tag-order ] {
+		iterations [1, optional] : UNSIGNED INTEGER [ range 32-bits ],
+		salt [2, optional] : OCTET STRING [ length 16..32 ],
+	}
+
+	pbkdfparamreq-struct => STRUCTURE [ tag-order ] {
+		initiatorRandom [1] : OCTET STRING [ length 32 ],
+		initiatorSessionId [2] : UNSIGNED INTEGER [ range 16-bits ],
+		passcodeId [3] : UNSIGNED INTEGER [ range 16-bits ],
+		hasPBKDFParameters [4] : BOOLEAN,
+		initiatorSessionParams [5, optional] : session-parameter-struct
+	}
+
+	pbkdfparamresp-struct => STRUCTURE [ tag-order ] {
+		initiatorRandom [1] : OCTET STRING [ length 32 ],
+		responderRandom [2] : OCTET STRING [ length 32 ],
+		responderSessionId [3] : UNSIGNED INTEGER [ range 16-bits ],
+		pbkdf_parameters [4] : Crypto_PBKDFParameterSet,
+		responderSessionParams [5, optional] : session-parameter-struct
+	}
+
+	pake-1-struct => STRUCTURE [ tag-order ] {
+		pA [1] : OCTET STRING [ length 65 ], /* CRYPTO_PUBLIC_KEY_SIZE_BYTES */
+	}
+
+	pake-2-struct => STRUCTURE [ tag-order ] {
+		pB [1] : OCTET STRING [ length 65 ], /* CRYPTO_PUBLIC_KEY_SIZE_BYTES */
+		cB [2] : OCTET STRING [ length 32 ], /* CRYPTO_HASH_LEN_BYTES */
+	}
+
+	pake-3-struct => STRUCTURE [ tag-order ] {
+		cA [1] : OCTET STRING [ length 32 ], /* CRYPTO_HASH_LEN_BYTES */
+	}
+
+	sigma-1-struct => STRUCTURE [ tag-order ] {
+		initiatorRandom [1] : OCTET STRING [ length 32 ],
+		initiatorSessionId [2] : UNSIGNED INTEGER [ range 16-bits ],
+		destinationId [3] : destination-identifier,
+		initiatorEphPubKey [4] : ec-pub-key,
+		initiatorSessionParams [5, optional] : session-parameter-struct,
+		resumptionID [6, optional] : OCTET STRING [ length 16 ],
+		initiatorResumeMIC [7, optional] : OCTET STRING [ length 16 ] /* CRYPTO_AEAD_MIC_LENGTH_BYTES */
+	}
+
+	sigma-2-tbsdata => STRUCTURE [ tag-order ] {
+		responderNOC [1] : OCTET STRING,
+		responderICAC [2, optional] : OCTET STRING,
+		responderEphPubKey [3] : ec-pub-key,
+		initiatorEphPubKey [4] : ec-pub-key,
+	}
+
+	sigma-2-tbedata => STRUCTURE [ tag-order ] {
+		responderNOC [1] : OCTET STRING,
+		responderICAC [2, optional] : OCTET STRING,
+		signature [3] : ec-signature,
+		resumptionID [4] : OCTET STRING [ length 16 ],
+	}
+
+	sigma-2-struct => STRUCTURE [ tag-order ] {
+		responderRandom [1] : OCTET STRING [ length 32 ],
+		responderSessionId [2] : UNSIGNED INTEGER [ range 16-bits ],
+		responderEphPubKey [3] : ec-pub-key,
+		encrypted2 [4] : OCTET STRING,
+		responderSessionParams [5, optional] : session-parameter-struct
+	}
+
+	sigma-3-tbsdata => STRUCTURE [ tag-order ] {
+		initiatorNOC [1] : OCTET STRING,
+		initiatorICAC [2, optional] : OCTET STRING,
+		initiatorEphPubKey [3] : ec-pub-key,
+		responderEphPubKey [4] : ec-pub-key,
+	}
+
+	sigma-3-tbedata => STRUCTURE [ tag-order ] {
+		initiatorNOC [1] : OCTET STRING,
+		initiatorICAC [2, optional] : OCTET STRING,
+		signature [3] : ec-signature,
+	}
+
+	sigma-3-struct => STRUCTURE [ tag-order ] {
+		encrypted3 [1] : OCTET STRING,
+	}
+
+	sigma-2-resume-struct => STRUCTURE [ tag-order ] {
+		resumptionID [1] : OCTET STRING [ length 16 ],
+		sigma2ResumeMIC [2] : OCTET STRING [ length 16 ],
+		responderSessionID [3] : UNSIGNED INTEGER [ range 16-bits ],
+		responderSessionParams [4, optional] : session-parameter-struct
+	}
+}

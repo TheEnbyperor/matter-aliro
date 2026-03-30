@@ -1,0 +1,439 @@
+StartUpEvent => STRUCTURE [ tag-order ] {
+	SoftwareVersion [0] :  UNSIGNED INTEGER [ range 32-bits ]
+}
+
+CapabilityMinimaStruct => STRUCTURE [ tag-order ] {
+	CaseSessionsPerFabric [0] : UNSIGNED INTEGER [ range 16-bits ],
+	SubscriptionsPerFabric [1] : UNSIGNED INTEGER [ range 16-bits ]
+}
+
+BasicCommissioningInfo => STRUCTURE [ tag-order ] {
+	FailSafeExpiryLengthSeconds [0] : UNSIGNED INTEGER [ range 16-bits ],
+	MaxCumulativeFailsafeSeconds [1] : UNSIGNED INTEGER [ range 16-bits ]
+}
+
+ArmFailSafe => STRUCTURE [ tag-order ] {
+	ExpiryLengthSeconds [0] : UNSIGNED INTEGER [ range 16-bits ],
+	Breadcrumb [1] : UNSIGNED INTEGER [ range 64-bits ]
+}
+
+ArmFailSafeResponse => STRUCTURE [ tag-order ] {
+	ErrorCode [0] : UNSIGNED INTEGER [ range 8-bits ],
+	DebugText [1] : STRING [ length 0..128 ]
+}
+
+regulatory-location => UNSIGNED INTEGER [ range 8-bits ] {
+    Indoor = 0,
+    Outdoor = 1,
+    IndoorOutdoor = 2
+}
+
+SetRegulatoryConfig => STRUCTURE [ tag-order ] {
+	NewRegulatoryConfig [0] : regulatory-location,
+	CountryCode [1] : STRING [ length 2 ],
+	Breadcrumb [2] : UNSIGNED INTEGER [ range 64-bits ]
+}
+
+commissioning-error => UNSIGNED INTEGER [ range 8-bits ] {
+    OK = 0,
+    ValueOutsideRange = 1,
+    InvalidAuthentication = 2,
+    NoFailSafe = 3,
+    BusyWithOtherAdmin = 4,
+    RequiredTCNotAccepted = 5,
+    TCAcknowledgementsNotReceived = 6,
+    TCMinVersionNotMet = 7
+}
+
+SetRegulatoryConfigResponse => STRUCTURE [ tag-order ] {
+	ErrorCode [0] : commissioning-error,
+	DebugText [1] : STRING [ length 0..128 ]
+}
+
+CommissioningCompleteResponse => STRUCTURE [ tag-order ] {
+	ErrorCode [0] : commissioning-error,
+	DebugText [1] : STRING [ length 0..128 ]
+}
+
+certificate-type => UNSIGNED INTEGER [ range 8-bits ] {
+    DACCertificate = 1,
+    PAICertificate = 2
+}
+
+CertificateChainRequest => STRUCTURE [ tag-order ] {
+	CertificateType [0] : certificate-type
+}
+
+CertificateChainResponse => STRUCTURE [ tag-order ] {
+	Certificate [0] : OCTET STRING [ length 0..600 ]
+}
+
+AttestationRequest => STRUCTURE [ tag-order ] {
+	AttestationNonce [0] : OCTET STRING [ length 32 ]
+}
+
+AttestationResponse => STRUCTURE [ tag-order ] {
+	AttestationElements [0] : OCTET STRING [ length 0..9000 ],
+	AttestationSignature [1] : OCTET STRING [ length 64 ]
+}
+
+attestation-elements => STRUCTURE [ tag-order ] {
+	certification_declaration[1] : OCTET STRING,
+	attestation_nonce[2] : OCTET STRING [ length 32 ],
+	timestamp[3] : UNSIGNED INTEGER [ range 32-bits ],
+	firmware_information[4, optional] : OCTET STRING
+}
+
+CSRRequest => STRUCTURE [ tag-order ] {
+	CSRNonce [0] : OCTET STRING [ length 32 ],
+	IsForUpdateNOC [1, optional] : BOOLEAN
+}
+
+CSRResponse => STRUCTURE [ tag-order ] {
+	NOCSRElements [0] : OCTET STRING [ length 0..9000 ],
+	AttestationSignature [1] : OCTET STRING [ length 64 ]
+}
+
+nocsr-elements => STRUCTURE [ tag-order ] {
+	csr[1] : OCTET STRING,
+	CSRNonce[2] : OCTET STRING [ length 32 ],
+	vendor_reserved1[3, optional] : OCTET STRING,
+	vendor_reserved2[4, optional] : OCTET STRING,
+	vendor_reserved3[5, optional] : OCTET STRING
+}
+
+node-operational-cert-status => UNSIGNED INTEGER [ range 8-bits ] {
+	OK = 0,
+	InvalidPublicKey = 1,
+	InvalidNodeOpId = 2,
+	InvalidNOC = 3,
+	MissingCsr = 4,
+	TableFull = 5,
+	InvalidAdminSubject = 6,
+	FabricConflict = 9,
+	LabelConflict = 10,
+	InvalidFabricIndex = 11
+}
+
+AddNOC => STRUCTURE [ tag-order ] {
+	NOCValue [0] : OCTET STRING [ length 0..400 ],
+	ICACValue [1, optional] : OCTET STRING [ length 0..400 ],
+	IPKValue [2] : OCTET STRING [ length 16 ],
+	CaseAdminSubject [3] : UNSIGNED INTEGER [ range 64-bits ],
+	AdminVendorId [4] : UNSIGNED INTEGER [ range 16-bits ]
+}
+
+UpdateNOC => STRUCTURE [ tag-order ] {
+	NOCValue [0] : OCTET STRING [ length 0..400 ],
+	ICACValue [1, optional] : OCTET STRING [ length 0..400 ]
+}
+
+UpdateFabricLabel => STRUCTURE [ tag-order ] {
+	Label [0] : STRING [ length 0..32 ]
+}
+
+RemoveFabric => STRUCTURE [ tag-order ] {
+	FabricIndex [0] : UNSIGNED INTEGER [ range 1..254 ]
+}
+
+NOCResponse => STRUCTURE [ tag-order ] {
+	StatusCode [0] : node-operational-cert-status,
+	FabricIndex [1, optional] : UNSIGNED INTEGER [ range 1..254 ],
+	DebugText [2] : STRING [ length 0..128 ]
+}
+
+AddTrustedRootCertificate => STRUCTURE [ tag-order ] {
+	RootCACertificate [0] : OCTET STRING [ length 0..400 ]
+}
+
+NOCStruct => STRUCTURE [ tag-order ] {
+	NOC [1] : OCTET STRING [ length 0..400 ],
+	ICAC [2, optional] : OCTET STRING [ length 0..400 ],
+	VVSC [3, optional] : OCTET STRING [ length 0..400 ]
+}
+
+FabricDescriptorStruct => STRUCTURE [ tag-order ] {
+	RootPublicKey [1] : OCTET STRING [ length 65 ],
+	VendorID [2] : UNSIGNED INTEGER [ range 16-bits ],
+	FabricID [3] : UNSIGNED INTEGER [ range 64-bits ],
+	NodeID [4] : UNSIGNED INTEGER [ range 64-bits ],
+	Label [5] : STRING [ length 0..32 ],
+	VIDVerificationStatement [6, optional] : OCTET STRING [ length 0..85 ]
+}
+
+DeviceTypeStruct => STRUCTURE [ tag-order ] {
+	DeviceType [0] : UNSIGNED INTEGER [ range 32-bits ],
+	Revision [1] : UNSIGNED INTEGER [ range 16-bits ]
+}
+
+SemanticTagStruct => STRUCTURE [ tag-order ] {
+	MfgCode [0] : UNSIGNED INTEGER [ nullable, range 16-bits ],
+	NamespaceID [1] : UNSIGNED INTEGER [ range 8-bits ],
+	Tag [2] : UNSIGNED INTEGER [ range 8-bits ],
+	Label [3, optional] : STRING [ length 0..64 ]
+}
+
+NetworkInfoStruct => STRUCTURE [ tag-order ] {
+	NetworkID [0] : OCTET STRING [ length 1..32 ],
+	Connected [1] : BOOLEAN
+}
+
+AccessControlEntryPrivilegeEnum => UNSIGNED INTEGER [ range 8-bits ] {
+	View = 1,
+	ProxyView = 2,
+	Operate = 3,
+	Manage = 4,
+	Administer = 5
+}
+
+AccessControlEntryAuthModeEnum => UNSIGNED INTEGER [ range 8-bits ] {
+	PASE = 1,
+	CASE = 2,
+	Group = 3
+}
+
+subject-id => UNSIGNED INTEGER [ range 64-bits ]
+
+AccessControlTargetStruct => STRUCTURE [ tag-order ] {
+	Cluster [0] : UNSIGNED INTEGER [ range 32-bits ],
+	Endpoint [1] : UNSIGNED INTEGER [ range 16-bits ],
+	DeviceType [2] : UNSIGNED INTEGER [ range 32-bits ]
+}
+
+AccessControlEntryStruct => STRUCTURE [ tag-order ] {
+	Privilege [1] : AccessControlEntryPrivilegeEnum,
+	AuthMode [2] : AccessControlEntryAuthModeEnum,
+	Subjects [3] : ARRAY [nullable] OF subject-id,
+	Targets [4] : ARRAY [nullable] OF AccessControlTargetStruct
+}
+
+AccessControlExtensionStruct => STRUCTURE [ tag-order ] {
+	Data [1] : OCTET STRING [ length 0..128 ]
+}
+
+IdentifyTypeEnum => UNSIGNED INTEGER [ range 8-bits ] {
+	NoIndication = 0,
+	LightOutput = 1,
+	VisibleIndicator = 2,
+	AudibleBeep = 3,
+	Display = 4,
+	Actuator = 5
+}
+
+IdentifyRequest => STRUCTURE [ tag-order ] {
+	IdentifyTime [0] : UNSIGNED INTEGER [ range 16-bits ]
+}
+
+LockState => UNSIGNED INTEGER [ range 8-bits ] {
+	NotFullyLocked = 0,
+	Locked = 1,
+	Unlocked = 2,
+	Unlatched = 3
+}
+
+LockType => UNSIGNED INTEGER [ range 8-bits ] {
+	DeadBolt = 0,
+	Magnetic = 1,
+	Other = 2,
+	Mortise = 3,
+	Rim = 4,
+	LatchBolt = 5,
+	CylindricalLock = 6,
+	TubularLock = 7,
+	InterconnectedLock = 8,
+	DeadLatch = 9,
+	DoorFurniture = 10,
+	Eurocylinder = 11
+}
+
+CredentialRule => UNSIGNED INTEGER [ range 8-bits ] {
+	Single = 0,
+	Dual = 1,
+	Tri = 2
+}
+
+UserStatus => UNSIGNED INTEGER [ range 8-bits ] {
+	Available = 0,
+	OccupiedEnabled = 1,
+	OccupiedDisabled = 3
+}
+
+UserType => UNSIGNED INTEGER [ range 8-bits ] {
+	UnrestrictedUser = 0,
+	NonAccessUser = 4,
+	ForcedUser = 5,
+	DisposableUser = 6,
+	ExpiringUser = 7
+}
+
+CredentialType => UNSIGNED INTEGER [ range 8-bits ] {
+	ProgrammingPIN = 0,
+	PIN = 1,
+	RFID = 2,
+	Fingerprint = 3,
+	FingerVein = 4,
+	Face = 5,
+	AliroCredentialIssuerKey = 6,
+	AliroEvictableEndpointKey = 7,
+	AliroNonEvictableEndpointKey = 8
+}
+
+DataOperationType => UNSIGNED INTEGER [ range 8-bits ] {
+	Add = 0,
+	Clear = 1,
+	Modify = 2
+}
+
+CredentialStruct => STRUCTURE [ tag-order ] {
+	CredentialType [0] : UNSIGNED INTEGER [ range 8-bits ],
+	CredentialIndex [1] : UNSIGNED INTEGER [ range 16-bits ]
+}
+
+LockDoorRequest => STRUCTURE [ tag-order ] {
+	PINCode [0, optional] : OCTET STRING
+}
+
+SetUserRequest => STRUCTURE [ tag-order ] {
+	OperationType [0] : UNSIGNED INTEGER [ range 8-bits ],
+	UserIndex [1] : UNSIGNED INTEGER,
+	UserName [2] : STRING [ nullable, length 0..10 ],
+	UserUniqueID [3] : UNSIGNED INTEGER [ nullable, range 32-bits ],
+	UserStatus [4] : UNSIGNED INTEGER [ nullable, range 8-bits ],
+	UserType [5] : UNSIGNED INTEGER [ nullable, range 8-bits ],
+	CredentialRule [6] : UNSIGNED INTEGER [ nullable, range 8-bits ]
+}
+
+GetUserRequest => STRUCTURE [ tag-order ] {
+	UserIndex [0] : UNSIGNED INTEGER
+}
+
+GetUserResponse => STRUCTURE [ tag-order ] {
+	UserIndex [0] : UNSIGNED INTEGER,
+	UserName [1] : STRING [ nullable, length 0..10 ],
+	UserUniqueID [2] : UNSIGNED INTEGER [ nullable, range 32-bits ],
+	UserStatus [3] : UNSIGNED INTEGER [ nullable, range 8-bits ],
+	UserType [4] : UNSIGNED INTEGER [ nullable, range 8-bits ],
+	CredentialRule [5] : UNSIGNED INTEGER [ nullable, range 8-bits ],
+	Credentials [6] : ARRAY [ nullable ] OF CredentialStruct,
+	CreatorFabricIndex [7] : UNSIGNED INTEGER [ nullable, range 1..254 ],
+	LastModifiedFabricIndex [8] : UNSIGNED INTEGER [ nullable, range 1..254 ],
+	NextUserIndex [9] : UNSIGNED INTEGER [ nullable ]
+}
+
+ClearUserRequest => STRUCTURE [ tag-order ] {
+	UserIndex [0] : UNSIGNED INTEGER
+}
+
+SetCredentialRequest => STRUCTURE [ tag-order ] {
+	OperationType [0] : UNSIGNED INTEGER [ range 8-bits ],
+	Credential [1] : CredentialStruct,
+	CredentialData [2]: OCTET STRING,
+	UserIndex [3] : UNSIGNED INTEGER [ nullable ],
+	UserStatus [4] : UNSIGNED INTEGER [ nullable, range 8-bits ],
+	UserType [5] : UNSIGNED INTEGER [ nullable, range 8-bits ],
+}
+
+SetCredentialResponse => STRUCTURE [ tag-order ] {
+	Status [0] : UNSIGNED INTEGER [ range 8-bits ],
+	UserIndex [1] : UNSIGNED INTEGER [ nullable, range 16-bits ],
+	NextCredentialIndex [2] : UNSIGNED INTEGER [ nullable, range 16-bits ]
+}
+
+GetCredentialStatusRequest => STRUCTURE [ tag-order ] {
+	Credential [0] : CredentialStruct
+}
+
+GetCredentialStatusResponse => STRUCTURE [ tag-order ] {
+	CredentialExists [0] : BOOLEAN,
+	UserIndex [1] : UNSIGNED INTEGER [ nullable ],
+	CreatorFabricIndex [2] : UNSIGNED INTEGER [ nullable, range 1..254 ],
+	LastModifiedFabricIndex [3] : UNSIGNED INTEGER [ nullable, range 1..254 ],
+	NextCredentialIndex [4] : UNSIGNED INTEGER [ nullable ],
+	CredentialData [5] : OCTET STRING [ nullable ]
+}
+
+ClearCredentialRequest => STRUCTURE [ tag-order ] {
+	Credential [0] : CredentialStruct [ nullable ]
+}
+
+SetAliroReaderConfigRequest => STRUCTURE [ tag-order ] {
+	SigningKey [0] : OCTET STRING [ length 32 ],
+	VerificationKey [1] : OCTET STRING [ length 65 ],
+	GroupIdentifier [2] : OCTET STRING [ length 16 ]
+}
+
+DoorLockAlarm => STRUCTURE [ tag-order ] {
+	AlarmCode [0] : UNSIGNED INTEGER [ range 8-bits ]
+}
+
+DoorStateChange => STRUCTURE [ tag-order ] {
+	DoorState [0] : UNSIGNED INTEGER [ range 8-bits ]
+}
+
+LockOperationType => UNSIGNED INTEGER [ range 8-bits ] {
+	Lock = 0,
+	Unlock = 1,
+	NonAccessUserEvent = 2,
+	ForcedUserEvent = 3,
+	Unlatch = 4
+}
+
+OperationSource => UNSIGNED INTEGER [ range 8-bits ] {
+	Unspecified = 0,
+	Manual = 1,
+	ProprietaryRemote = 2,
+	Keypad = 3,
+	Auto = 4,
+	Button = 5,
+	Schedule = 6,
+	Remote = 7,
+	RFID = 8,
+	Biometric = 9,
+	Aliro = 10
+}
+
+LockOperation => STRUCTURE [ tag-order ] {
+	LockOperationType [0] : LockOperationType,
+	OperationSource [1] : OperationSource,
+	UserIndex [2] : UNSIGNED INTEGER [ nullable ],
+	FabricIndex [3] : UNSIGNED INTEGER [ nullable, range 1..254 ],
+	SourceNode [4] : UNSIGNED INTEGER [ nullable, range 64-bits ],
+	Credentials [5] : ARRAY [nullable] OF CredentialStruct
+}
+
+LockOperationError => STRUCTURE [ tag-order ] {
+	LockOperationType [0] : LockOperationType,
+	OperationSource [1] : OperationSource,
+	OperationError [2] : UNSIGNED INTEGER [ range 8-bits ],
+	UserIndex [3] : UNSIGNED INTEGER [ nullable ],
+	FabricIndex [4] : UNSIGNED INTEGER [ nullable, range 1..254 ],
+	SourceNode [5] : UNSIGNED INTEGER [ nullable, range 64-bits ],
+	Credentials [6] : ARRAY [ nullable ] OF CredentialStruct
+}
+
+LockDataType => UNSIGNED INTEGER [ range 8-bits ] {
+	Unspecified = 0,
+	ProgrammingCode = 1,
+	UserIndex = 2,
+	WeekDaySchedule = 3,
+	YearDaySchedule = 4,
+	HolidaySchedule = 5,
+	PIN = 6,
+	RFID = 7,
+	Fingerprint = 8,
+	FingerVein = 9,
+	Face = 10,
+	AliroCredentialIssuerKey = 11,
+	AliroEvictableEndpointKey = 12,
+	AliroNonEvictableEndpointKey = 13
+}
+
+LockUserChange => STRUCTURE [ tag-order ] {
+	LockDataType [0] : LockDataType,
+	DataOperationType [1] : DataOperationType,
+	OperationSource [1] : OperationSource,
+	UserIndex [3] : UNSIGNED INTEGER [ nullable ],
+	FabricIndex [4] : UNSIGNED INTEGER [ nullable, range 1..254 ],
+	SourceNode [5] : UNSIGNED INTEGER [ nullable, range 64-bits ],
+	DataIndex [6] : UNSIGNED INTEGER [ nullable, range 16-bits ]
+}
