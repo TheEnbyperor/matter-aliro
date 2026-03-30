@@ -6,8 +6,9 @@ import cryptography.hazmat.primitives.serialization
 import cryptography.hazmat.primitives.hashes
 import cryptography.hazmat.primitives.asymmetric.ec
 import cryptography.hazmat.primitives.asymmetric.utils
-from . import endpoint, cluster, interaction_model
+from . import endpoint, cluster, interaction_model, acl
 from .. import device, message, mdns
+from ..encoding import tlv
 from ..crypto import certs
 from ..encoding import protocol_messages
 
@@ -19,7 +20,7 @@ class RootNode(endpoint.Endpoint):
     def __init__(self, unique_id: str, state: device.DeviceState, layer: message.MessageLayer, dns: mdns.MDNS):
         super().__init__(unique_id)
 
-        self.access_control = AccessControl()
+        self.access_control = AccessControl(state)
         self.basic_information = BasicInformation(state)
         self.general_commissioning = GeneralCommissioning(state, layer)
         self.network_commissioning = NetworkCommissioning()
@@ -39,24 +40,136 @@ class AccessControl(cluster.Cluster):
     cluster_revision_number = 2
     features = [0]
 
-    acl = cluster.ListAttribute(0x0000, cluster.RWAccess.ReadWrite, [cluster.Privileges.Administer])
-    extension = cluster.ListAttribute(0x0001, cluster.RWAccess.ReadWrite, [cluster.Privileges.Administer])
-    subjects_per_access_control_entry = cluster.Attribute(0x0002, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    targets_per_access_control_entry = cluster.Attribute(0x0003, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    access_control_entries_per_fabric = cluster.Attribute(0x0004, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
+    acl = cluster.ListAttribute(0x0000, cluster.RWAccess.ReadWrite, cluster.Privileges.Administer)
+    extension = cluster.ListAttribute(0x0001, cluster.RWAccess.ReadWrite, cluster.Privileges.Administer)
+    subjects_per_access_control_entry = cluster.Attribute(0x0002, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    targets_per_access_control_entry = cluster.Attribute(0x0003, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    access_control_entries_per_fabric = cluster.Attribute(0x0004, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
 
-    access_control_entry_changed = cluster.Event(0x0000, cluster.EventPriority.INFO, [cluster.Privileges.Administer])
-    access_control_extensions_changed = cluster.Event(0x0001, cluster.EventPriority.INFO, [
-        cluster.Privileges.Administer])
+    access_control_entry_changed = cluster.Event(0x0000, cluster.EventPriority.INFO, cluster.Privileges.Administer)
+    access_control_extensions_changed = cluster.Event(0x0001, cluster.EventPriority.INFO, cluster.Privileges.Administer)
+
+    def __init__(self, device_state: device.DeviceState):
+        super().__init__()
+        self.device_state = device_state
+
+    @acl.reader
+    def read_acl(self, session: message.SessionContext):
+        out = []
+        for entry in filter(lambda e: e.fabric_index == session.local_fabric_index, self.device_state.acl):
+            if entry.privilege_level == cluster.Privileges.Administer:
+                privilege = protocol_messages.AccessControlEntryPrivilegeEnumEnum.Administer.value
+            elif entry.privilege_level == cluster.Privileges.Manage:
+                privilege = protocol_messages.AccessControlEntryPrivilegeEnumEnum.Manage.value
+            elif entry.privilege_level == cluster.Privileges.Operate:
+                privilege = protocol_messages.AccessControlEntryPrivilegeEnumEnum.Operate.value
+            elif entry.privilege_level == cluster.Privileges.View:
+                privilege = protocol_messages.AccessControlEntryPrivilegeEnumEnum.View.value
+            else:
+                continue
+
+            if entry.authentication_mode == acl.AuthenticationMode.PASE:
+                auth_mode = protocol_messages.AccessControlEntryAuthModeEnumEnum.PASE.value
+            elif entry.authentication_mode == acl.AuthenticationMode.CASE:
+                auth_mode = protocol_messages.AccessControlEntryAuthModeEnumEnum.CASE.value
+            elif entry.authentication_mode == acl.AuthenticationMode.Group:
+                auth_mode = protocol_messages.AccessControlEntryAuthModeEnumEnum.Group.value
+            else:
+                continue
+
+            out.append(protocol_messages.AccessControlEntryStruct(
+                privilege=privilege,
+                auth_mode=auth_mode,
+                subjects=entry.subjects or tlv.Null(),
+                targets=[protocol_messages.AccessControlTargetStruct(
+                    cluster=t.cluster if t.cluster is not None else tlv.Null(),
+                    endpoint=t.endpoint if t.endpoint is not None else tlv.Null(),
+                    device_type=t.device_type if t.device_type is not None else tlv.Null(),
+                ) for t in entry.targets] or tlv.Null(),
+            ))
+
+        return out
 
     @acl.list_replacer
-    def replace_acl(self, data: typing.List[protocol_messages.AccessControlEntryStruct]):
-        print("Replace ACL entries", data)
+    def replace_acl(self, data: typing.List[protocol_messages.AccessControlEntryStruct], session: message.SessionContext):
+        new_entries = []
+        for entry in data:
+            if entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.Administer.value:
+                privilege_level = cluster.Privileges.Administer
+            elif entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.Manage.value:
+                privilege_level = cluster.Privileges.Manage
+            elif entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.Operate.value:
+                privilege_level = cluster.Privileges.Operate
+            elif entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.View.value:
+                privilege_level = cluster.Privileges.View
+            else:
+                return interaction_model.StatusCode.CONSTRAINT_ERROR
+            if entry.auth_mode == protocol_messages.AccessControlEntryAuthModeEnumEnum.PASE.value:
+                authentication_mode = acl.AuthenticationMode.PASE
+            elif entry.auth_mode == protocol_messages.AccessControlEntryAuthModeEnumEnum.CASE.value:
+                authentication_mode = acl.AuthenticationMode.CASE
+            elif entry.auth_mode == protocol_messages.AccessControlEntryAuthModeEnumEnum.Group.value:
+                authentication_mode = acl.AuthenticationMode.Group
+            else:
+                return interaction_model.StatusCode.CONSTRAINT_ERROR
+
+            new_entries.append(acl.ACLEntry(
+                fabric_index=session.local_fabric_index,
+                privilege_level=privilege_level,
+                authentication_mode=authentication_mode,
+                subjects=entry.subjects or [],
+                targets=[acl.ACLTarget(
+                    endpoint=t.endpoint or None,
+                    cluster=t.cluster or None,
+                    device_type=t.device_type or None,
+                ) for t in entry.targets] if entry.targets else [],
+            ))
+
+        self.device_state.acl = list(filter(lambda a: a.fabric_index != session.local_fabric_index, self.device_state.acl)) + new_entries
+        self.increment_data_version()
+        self.attributes_changed([self.acl])
+        self.device_state.save_state()
         return interaction_model.StatusCode.SUCCESS
 
     @acl.list_adder
-    def add_acl(self, data: typing.List[protocol_messages.AccessControlEntryStruct]):
-        print("Add ACL entry", data)
+    def add_acl(self, data: typing.List[protocol_messages.AccessControlEntryStruct], session: message.SessionContext):
+        new_entries = []
+        for entry in data:
+            if entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.Administer.value:
+                privilege_level = cluster.Privileges.Administer
+            elif entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.Manage.value:
+                privilege_level = cluster.Privileges.Manage
+            elif entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.Operate.value:
+                privilege_level = cluster.Privileges.Operate
+            elif entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.View.value:
+                privilege_level = cluster.Privileges.View
+            else:
+                return interaction_model.StatusCode.CONSTRAINT_ERROR
+            if entry.auth_mode == protocol_messages.AccessControlEntryAuthModeEnumEnum.PASE.value:
+                authentication_mode = acl.AuthenticationMode.PASE
+            elif entry.auth_mode == protocol_messages.AccessControlEntryAuthModeEnumEnum.CASE.value:
+                authentication_mode = acl.AuthenticationMode.CASE
+            elif entry.auth_mode == protocol_messages.AccessControlEntryAuthModeEnumEnum.Group.value:
+                authentication_mode = acl.AuthenticationMode.Group
+            else:
+                return interaction_model.StatusCode.CONSTRAINT_ERROR
+
+            new_entries.append(acl.ACLEntry(
+                fabric_index=session.local_fabric_index,
+                privilege_level=privilege_level,
+                authentication_mode=authentication_mode,
+                subjects=entry.subjects or [],
+                targets=[acl.ACLTarget(
+                    endpoint=t.endpoint or None,
+                    cluster=t.cluster or None,
+                    device_type=t.device_type or None,
+                ) for t in entry.targets] if entry.targets else [],
+            ))
+
+        self.device_state.acl += new_entries
+        self.increment_data_version()
+        self.attributes_changed([self.acl])
+        self.device_state.save_state()
         return interaction_model.StatusCode.SUCCESS
 
     @extension.list_replacer
@@ -85,36 +198,43 @@ class BasicInformation(cluster.Cluster):
     cluster_id = 0x0028
     cluster_revision_number = 5
 
-    data_model_revision = cluster.Attribute(0x0000, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    vendor_name = cluster.Attribute(0x0001, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    vendor_id = cluster.Attribute(0x0002, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    product_name = cluster.Attribute(0x0003, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    product_id = cluster.Attribute(0x0004, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    node_label = cluster.Attribute(0x0005, cluster.RWAccess.ReadWrite,
-                                   [cluster.Privileges.View, cluster.Privileges.Manage], n_nonvolatile=True)
-    location = cluster.Attribute(0x0006, cluster.RWAccess.ReadWrite,
-                                 [cluster.Privileges.View, cluster.Privileges.Administer], n_nonvolatile=True)
-    hardware_version = cluster.Attribute(0x0007, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    hardware_version_string = cluster.Attribute(0x0008, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    software_version = cluster.Attribute(0x0009, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    software_version_string = cluster.Attribute(0x000A, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    manufacturing_date = cluster.Attribute(0x000B, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    part_number = cluster.Attribute(0x000C, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    product_url = cluster.Attribute(0x000D, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    product_label = cluster.Attribute(0x000E, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    serial_number = cluster.Attribute(0x000F, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    local_config_disabled = cluster.Attribute(0x0010, cluster.RWAccess.ReadWrite,
-                                              [cluster.Privileges.View, cluster.Privileges.Manage], n_nonvolatile=True)
-    reachable = cluster.Attribute(0x0011, cluster.RWAccess.Read, [cluster.Privileges.View])
-    unique_id = cluster.Attribute(0x0012, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    capability_minima = cluster.Attribute(0x0013, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    product_appearance = cluster.Attribute(0x0014, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    specification_version = cluster.Attribute(0x0015, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    max_paths_per_invoke = cluster.Attribute(0x0016, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    configuration_version = cluster.Attribute(0x0018, cluster.RWAccess.Read, [cluster.Privileges.View],
-                                              n_nonvolatile=True)
+    data_model_revision = cluster.Attribute(0x0000, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    vendor_name = cluster.Attribute(0x0001, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    vendor_id = cluster.Attribute(0x0002, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    product_name = cluster.Attribute(0x0003, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    product_id = cluster.Attribute(0x0004, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    node_label = cluster.Attribute(
+        0x0005, cluster.RWAccess.ReadWrite, cluster.Privileges.View, cluster.Privileges.Manage,
+        n_nonvolatile=True
+    )
+    location = cluster.Attribute(
+        0x0006, cluster.RWAccess.ReadWrite, cluster.Privileges.View, cluster.Privileges.Administer,
+        n_nonvolatile=True
+    )
+    hardware_version = cluster.Attribute(0x0007, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    hardware_version_string = cluster.Attribute(0x0008, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    software_version = cluster.Attribute(0x0009, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    software_version_string = cluster.Attribute(0x000A, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    manufacturing_date = cluster.Attribute(0x000B, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    part_number = cluster.Attribute(0x000C, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    product_url = cluster.Attribute(0x000D, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    product_label = cluster.Attribute(0x000E, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    serial_number = cluster.Attribute(0x000F, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    local_config_disabled = cluster.Attribute(
+        0x0010, cluster.RWAccess.ReadWrite, cluster.Privileges.View, cluster.Privileges.Manage,
+        n_nonvolatile=True
+    )
+    reachable = cluster.Attribute(0x0011, cluster.RWAccess.Read, cluster.Privileges.View)
+    unique_id = cluster.Attribute(0x0012, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    capability_minima = cluster.Attribute(0x0013, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    product_appearance = cluster.Attribute(0x0014, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    specification_version = cluster.Attribute(0x0015, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    max_paths_per_invoke = cluster.Attribute(0x0016, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    configuration_version = cluster.Attribute(
+        0x0018, cluster.RWAccess.Read, cluster.Privileges.View, n_nonvolatile=True
+    )
 
-    startup = cluster.Event(0x0000, cluster.EventPriority.CRITICAL, [cluster.Privileges.View])
+    startup = cluster.Event(0x0000, cluster.EventPriority.CRITICAL, cluster.Privileges.View)
 
     def __init__(self, device_state: device.DeviceState):
         super().__init__()
@@ -201,18 +321,20 @@ class GeneralCommissioning(cluster.Cluster):
     cluster_id = 0x0030
     cluster_revision_number = 1
 
-    breadcrumb = cluster.Attribute(0x0000, cluster.RWAccess.ReadWrite,
-                                   [cluster.Privileges.View, cluster.Privileges.Administer])
-    basic_commissioning_info = cluster.Attribute(0x0001, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    regulatory_config = cluster.Attribute(0x0002, cluster.RWAccess.Read, [cluster.Privileges.View])
-    location_capability = cluster.Attribute(0x0003, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    supports_concurrent_connection = cluster.Attribute(0x0004, cluster.RWAccess.Read, [cluster.Privileges.View],
-                                                       f_fixed=True)
-    is_commissioning_without_power = cluster.Attribute(0x000C, cluster.RWAccess.Read, [cluster.Privileges.View])
+    breadcrumb = cluster.Attribute(
+        0x0000, cluster.RWAccess.ReadWrite, cluster.Privileges.View, cluster.Privileges.Administer
+    )
+    basic_commissioning_info = cluster.Attribute(0x0001, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    regulatory_config = cluster.Attribute(0x0002, cluster.RWAccess.Read, cluster.Privileges.View)
+    location_capability = cluster.Attribute(0x0003, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    supports_concurrent_connection = cluster.Attribute(
+        0x0004, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True
+    )
+    is_commissioning_without_power = cluster.Attribute(0x000C, cluster.RWAccess.Read, cluster.Privileges.View)
 
-    arm_fail_safe = cluster.Command(0x0000, 0x0001, [cluster.Privileges.Administer])
-    set_regulatory_config = cluster.Command(0x0002, 0x0003, [cluster.Privileges.Administer])
-    commissioning_complete = cluster.Command(0x0004, 0x0005, [cluster.Privileges.Administer])
+    arm_fail_safe = cluster.Command(0x0000, 0x0001, cluster.Privileges.Administer)
+    set_regulatory_config = cluster.Command(0x0002, 0x0003, cluster.Privileges.Administer)
+    commissioning_complete = cluster.Command(0x0004, 0x0005, cluster.Privileges.Administer)
 
     def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer):
         super().__init__()
@@ -308,12 +430,15 @@ class NetworkCommissioning(cluster.Cluster):
     cluster_revision_number = 2
     features = [2]
 
-    max_networks = cluster.Attribute(0x0000, cluster.RWAccess.Read, [cluster.Privileges.Administer], f_fixed=True)
-    networks = cluster.ListAttribute(0x0001, cluster.RWAccess.Read, [cluster.Privileges.Administer])
-    interface_enabled = cluster.Attribute(0x0004, cluster.RWAccess.ReadWrite, [cluster.Privileges.View, cluster.Privileges.Administer], n_nonvolatile=True)
-    last_networking_status = cluster.Attribute(0x0005, cluster.RWAccess.Read, [cluster.Privileges.Administer], x_nullable=True)
-    last_network_id = cluster.Attribute(0x0006, cluster.RWAccess.Read, [cluster.Privileges.Administer], x_nullable=True)
-    last_connect_error_value = cluster.Attribute(0x0007, cluster.RWAccess.Read, [cluster.Privileges.Administer], x_nullable=True)
+    max_networks = cluster.Attribute(0x0000, cluster.RWAccess.Read, cluster.Privileges.Administer, f_fixed=True)
+    networks = cluster.ListAttribute(0x0001, cluster.RWAccess.Read, cluster.Privileges.Administer)
+    interface_enabled = cluster.Attribute(
+        0x0004, cluster.RWAccess.ReadWrite, cluster.Privileges.View, cluster.Privileges.Administer,
+        n_nonvolatile=True
+    )
+    last_networking_status = cluster.Attribute(0x0005, cluster.RWAccess.Read, cluster.Privileges.Administer, x_nullable=True)
+    last_network_id = cluster.Attribute(0x0006, cluster.RWAccess.Read, cluster.Privileges.Administer, x_nullable=True)
+    last_connect_error_value = cluster.Attribute(0x0007, cluster.RWAccess.Read, cluster.Privileges.Administer, x_nullable=True)
 
     @max_networks.reader
     def read_max_networks(self):
@@ -348,37 +473,34 @@ class OperationalCredentials(cluster.Cluster):
     cluster_revision_number = 2
 
     nocs = cluster.ListAttribute(
-        0x0000, cluster.RWAccess.Read, [cluster.Privileges.Administer],
+        0x0000, cluster.RWAccess.Read, cluster.Privileges.Administer,
         c_changes_omitted=True, n_nonvolatile=True
     )
     fabrics = cluster.ListAttribute(
-        0x0001, cluster.RWAccess.Read, [cluster.Privileges.View],
-        n_nonvolatile=True
+        0x0001, cluster.RWAccess.Read, cluster.Privileges.View, n_nonvolatile=True
     )
     supported_fabrics = cluster.Attribute(
-        0x0002, cluster.RWAccess.Read, [cluster.Privileges.View],
-        f_fixed=True
+        0x0002, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True
     )
     commissioned_fabrics = cluster.Attribute(
-        0x0003, cluster.RWAccess.Read, [cluster.Privileges.View],
-        n_nonvolatile=True
+        0x0003, cluster.RWAccess.Read, cluster.Privileges.View, n_nonvolatile=True
     )
     trusted_root_certificates = cluster.ListAttribute(
-        0x0004, cluster.RWAccess.Read, [cluster.Privileges.View],
+        0x0004, cluster.RWAccess.Read, cluster.Privileges.View,
         c_changes_omitted=True, n_nonvolatile=True
     )
-    current_fabric_index = cluster.Attribute(0x0005, cluster.RWAccess.Read, [cluster.Privileges.View])
+    current_fabric_index = cluster.Attribute(0x0005, cluster.RWAccess.Read, cluster.Privileges.View)
 
-    attestation_request = cluster.Command(0x0000, 0x0001, [cluster.Privileges.Administer])
-    certificate_chain_request = cluster.Command(0x0002, 0x0003, [cluster.Privileges.Administer])
-    csr_request = cluster.Command(0x0004, 0x0005, [cluster.Privileges.Administer])
-    add_noc = cluster.Command(0x0006, 0x0008, [cluster.Privileges.Administer])
-    update_noc = cluster.Command(0x0007, 0x0008, [cluster.Privileges.Administer])
-    update_fabric_label = cluster.Command(0x0009, 0x0008, [cluster.Privileges.Administer])
-    remove_fabric = cluster.Command(0x000A, 0x0008, [cluster.Privileges.Administer])
-    add_trusted_root_certificate = cluster.Command(0x000B, None, [cluster.Privileges.Administer])
-    set_vid_verification_statement = cluster.Command(0x000C, None, [cluster.Privileges.Administer])
-    sign_vid_verification_request = cluster.Command(0x000D, 0x000E, [cluster.Privileges.Administer])
+    attestation_request = cluster.Command(0x0000, 0x0001, cluster.Privileges.Administer)
+    certificate_chain_request = cluster.Command(0x0002, 0x0003, cluster.Privileges.Administer)
+    csr_request = cluster.Command(0x0004, 0x0005, cluster.Privileges.Administer)
+    add_noc = cluster.Command(0x0006, 0x0008, cluster.Privileges.Administer)
+    update_noc = cluster.Command(0x0007, 0x0008, cluster.Privileges.Administer)
+    update_fabric_label = cluster.Command(0x0009, 0x0008, cluster.Privileges.Administer)
+    remove_fabric = cluster.Command(0x000A, 0x0008, cluster.Privileges.Administer)
+    add_trusted_root_certificate = cluster.Command(0x000B, None, cluster.Privileges.Administer)
+    set_vid_verification_statement = cluster.Command(0x000C, None, cluster.Privileges.Administer)
+    sign_vid_verification_request = cluster.Command(0x000D, 0x000E, cluster.Privileges.Administer)
 
     def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer, dns: mdns.MDNS):
         super().__init__()
@@ -424,10 +546,10 @@ class OperationalCredentials(cluster.Cluster):
         return [fabric.rcac for fabric in self.device_state.fabrics.values()]
 
     @current_fabric_index.reader
-    def read_current_fabric_index(self, session: message.SessionContexts):
+    def read_current_fabric_index(self, session: message.SessionContext):
         return session.local_fabric_index
 
-    def sign_attestation(self, data: bytes, session: message.SessionContexts):
+    def sign_attestation(self, data: bytes, session: message.SessionContext):
         attestation_tbs = bytearray(data)
         attestation_tbs.extend(session.attestation_challenge)
 
@@ -442,7 +564,7 @@ class OperationalCredentials(cluster.Cluster):
 
     @attestation_request.handler
     def handle_attestation_request(
-            self, data: protocol_messages.AttestationRequest, session: message.SessionContexts
+            self, data: protocol_messages.AttestationRequest, session: message.SessionContext
     ) -> protocol_messages.AttestationResponse:
         attestation_elements = protocol_messages.AttestationElements(
             certification_declaration=b"",
@@ -477,7 +599,7 @@ class OperationalCredentials(cluster.Cluster):
 
     @csr_request.handler
     def handle_certificate_request(
-            self, data: protocol_messages.CSRRequest, session: message.SessionContexts
+            self, data: protocol_messages.CSRRequest, session: message.SessionContext
     ) -> protocol_messages.CSRResponse:
         pkey = cryptography.hazmat.primitives.asymmetric.ec.generate_private_key(
             cryptography.hazmat.primitives.asymmetric.ec.SECP256R1(),
@@ -502,7 +624,7 @@ class OperationalCredentials(cluster.Cluster):
 
     @add_noc.handler
     def handle_add_noc(
-            self, data: protocol_messages.AddNOC, session: message.SessionContexts
+            self, data: protocol_messages.AddNOC, session: message.SessionContext
     ) -> protocol_messages.NOCResponse:
         if not self.candidate_operational_key:
             return protocol_messages.NOCResponse(
@@ -588,7 +710,8 @@ class OperationalCredentials(cluster.Cluster):
             node_id = next(filter(lambda a: a.variant == "matter-node-id", noc_cert.subject)).value
 
             self.candidate_fabric_idx = fabric_idx
-            session.local_fabric_index = fabric_idx
+            if isinstance(session, message.SecureSessionContext) and session.session_type == message.SecureSessionType.PASE:
+                session.local_fabric_index = fabric_idx
             fabric = device.Fabric(
                 root_public_key=root_public_key,
                 admin_vendor_id=data.admin_vendor_id,
@@ -601,6 +724,13 @@ class OperationalCredentials(cluster.Cluster):
                 ipk=data.ipk_value,
             )
             self.device_state.fabrics[fabric_idx] = fabric
+            self.device_state.acl.append(acl.ACLEntry(
+                fabric_index=fabric_idx,
+                privilege_level=cluster.Privileges.Administer,
+                authentication_mode=acl.AuthenticationMode.CASE,
+                subjects=[data.case_admin_subject],
+                targets=[],
+            ))
             self.mdns.send_unsolicited_fabric_packets(fabric_idx)
             self.increment_data_version()
             self.attributes_changed([
@@ -624,7 +754,7 @@ class OperationalCredentials(cluster.Cluster):
 
     @update_fabric_label.handler
     def handle_update_fabric_label(
-            self, data: protocol_messages.UpdateFabricLabel, session: message.SessionContexts
+            self, data: protocol_messages.UpdateFabricLabel, session: message.SessionContext
     ) -> protocol_messages.NOCResponse:
         for idx, fabric in self.device_state.fabrics.items():
             if fabric.label == data.label and idx != session.local_fabric_index:
@@ -656,6 +786,7 @@ class OperationalCredentials(cluster.Cluster):
             )
 
         del self.device_state.fabrics[data.fabric_index]
+        self.device_state.acl = list(filter(lambda a: a.fabric_index != data.fabric_index, self.device_state.acl))
         self.device_state.save_state()
 
         tbd_id = set()

@@ -19,7 +19,7 @@ from ..message import protocol, message_layer
 from ..encoding import protocol_messages
 
 
-class StatusReport(enum.IntEnum):
+class StatusCode(enum.IntEnum):
     SESSION_ESTABLISHMENT_SUCCESS = 0x0000
     NO_SHARED_TRUST_ROOTS = 0x0001
     INVALID_PARAMETER = 0x0002
@@ -162,7 +162,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
 
     def pkbdf_param_request(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.PbkdfparamreqStruct):
         if msg.passcode_id != 0:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             self._message_layer.close_exchange(exchange)
             return
 
@@ -181,6 +181,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
             local_fabric_index=0,
             local_node_id=0,
             peer_node_id=0,
+            cats=[],
             resumption_id=b"",
             peer=exchange.context.peer,
         )
@@ -213,7 +214,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
     def pase_pake_1(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Pake1Struct):
         pase_state = self.pase_state.get(exchange)
         if not pase_state:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             self._message_layer.close_exchange(exchange)
             return
 
@@ -239,12 +240,12 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
     def pase_pake_3(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Pake3Struct):
         pase_state = self.pase_state.get(exchange)
         if not pase_state:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             self._message_layer.close_exchange(exchange)
             return
 
         if msg.c_a != pase_state.ca:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.pase_state[exchange]
             self._message_layer.close_exchange(exchange)
             return
@@ -256,13 +257,13 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
         pase_state.pending_session.attestation_challenge = k[2 * CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES:3 * CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES]
 
         self._message_layer.secure_unicast_session_context[pase_state.pending_session.local_session_identifier] = pase_state.pending_session
-        self.send_status_report(exchange=exchange, general_code=StatusReport.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusReport.SESSION_ESTABLISHMENT_SUCCESS.value)
+        self.send_status_report(exchange=exchange, general_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.value)
         del self.pase_state[exchange]
         self._message_layer.close_exchange(exchange)
 
     def case_sigma_1(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Sigma1Struct):
         if (msg.resumption_id and not msg.initiator_resume_mic) or (msg.initiator_resume_mic and not msg.resumption_id):
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             self._message_layer.close_exchange(exchange)
             return
 
@@ -289,7 +290,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
                 break
 
         if not target_fabric:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.NO_SHARED_TRUST_ROOTS.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.NO_SHARED_TRUST_ROOTS.value)
             self._message_layer.close_exchange(exchange)
             return
 
@@ -309,6 +310,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
             local_fabric_index=target_fabric_index,
             local_node_id=target_fabric.node_id,
             peer_node_id=0,
+            cats=[],
             resumption_id=resumption_id,
             peer=exchange.context.peer,
         )
@@ -395,7 +397,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
     def case_sigma_3(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Sigma3Struct):
         case_state = self.case_state.get(exchange)
         if not case_state:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             self._message_layer.close_exchange(exchange)
             return
 
@@ -418,7 +420,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
                 nonce=b"NCASE_Sigma3N"
             )
         except cryptography.exceptions.InvalidTag:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
             self._message_layer.close_exchange(exchange)
             return
@@ -432,29 +434,33 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
             icac_cert = None
 
         if not certs.verify_noc_dn(noc_cert):
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
             self._message_layer.close_exchange(exchange)
             return
 
         if icac_cert and not certs.verify_icac_dn(icac_cert):
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
             self._message_layer.close_exchange(exchange)
             return
 
         fabric_id = next(filter(lambda a: a.variant == "matter-fabric-id", noc_cert.subject)).value
         node_id = next(filter(lambda a: a.variant == "matter-node-id", noc_cert.subject)).value
+        cats = list(map(lambda a: certs.CAT(
+            id=a.value >> 16,
+            version=a.value & 0xFFFF,
+        ), filter(lambda a: a.variant == "matter-noc-cat", noc_cert.subject)))
 
         if fabric_id != case_state.fabric.fabric_id:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
             self._message_layer.close_exchange(exchange)
             return
 
         cert_chain = [noc_cert, icac_cert, case_state.fabric.rcac] if icac_cert else [noc_cert, case_state.fabric.rcac]
         if not certs.verify_chain(cert_chain):
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
             self._message_layer.close_exchange(exchange)
             return
@@ -482,7 +488,7 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
                 )
             )
         except cryptography.exceptions.InvalidSignature:
-            self.send_status_report(exchange=exchange, general_code=StatusReport.INVALID_PARAMETER.general_code(), protocol_code=StatusReport.INVALID_PARAMETER.value)
+            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
             self._message_layer.close_exchange(exchange)
             return
@@ -503,8 +509,9 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
         case_state.pending_session.r2i_key = k[CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES:2 * CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES]
         case_state.pending_session.attestation_challenge = k[2 * CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES:3 * CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES]
         case_state.pending_session.peer_node_id = node_id
+        case_state.pending_session.cats = cats
 
         self._message_layer.secure_unicast_session_context[case_state.pending_session.local_session_identifier] = case_state.pending_session
-        self.send_status_report(exchange=exchange, general_code=StatusReport.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusReport.SESSION_ESTABLISHMENT_SUCCESS.value)
+        self.send_status_report(exchange=exchange, general_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.value)
         del self.case_state[exchange]
         self._message_layer.close_exchange(exchange)

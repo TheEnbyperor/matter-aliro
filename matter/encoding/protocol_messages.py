@@ -892,9 +892,9 @@ class AccessControlEntryAuthModeEnumEnum(enum.IntEnum):
 
 @dataclasses.dataclass
 class AccessControlTargetStruct(tlv.Structure):
-  cluster: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 4294967295})
-  endpoint: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
-  device_type: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 4294967295})
+  cluster: int | tlv.Null = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 4294967295})
+  endpoint: int | tlv.Null = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  device_type: int | tlv.Null = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 4294967295})
 
   class Meta:
     order = "tag"
@@ -1690,7 +1690,7 @@ class KeyUsageFlagEnum(enum.IntEnum):
 @dataclasses.dataclass
 class Extension(tlv.ChoiceOf):
   variant: str
-  value: typing.Union[typing.ForwardRef("BasicConstraints"), bytes, int, typing.List[int]]
+  value: typing.Union[typing.ForwardRef("BasicConstraints"), int, bytes, typing.List[int]]
 
   class Meta:
     options = (

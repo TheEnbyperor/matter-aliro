@@ -11,7 +11,8 @@ import cryptography.hazmat.primitives.serialization
 import cryptography.hazmat.primitives.asymmetric.ec
 from . import crypto, verhoeff, encoding
 from .encoding import protocol_messages, TLVElement, tlv
-from .interaction_model import interaction_model, cluster
+from .interaction_model import interaction_model, cluster, acl
+from .interaction_model.acl import ACLEntry
 
 BASE38_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-."
 
@@ -102,6 +103,7 @@ class DeviceState:
         self.country_code = "XX"
         self.discriminator = 0
         self.passcode = 0
+        self.acl: typing.List[acl.ACLEntry] = []
         self.fabrics: typing.Dict[int, Fabric] = {}
         self.in_commissioning_mode = False
         self.pai_cert: typing.Optional[cryptography.x509.Certificate] = None
@@ -109,6 +111,7 @@ class DeviceState:
         self.dac_key: typing.Optional[cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey] = None
         self.next_event_id = 0
         self.events: typing.List[interaction_model.Event] = []
+        self.cluster_data_versions: typing.Dict[typing.Tuple[int, int], int] = {}
 
     def init_state(self):
         self.country_code = "XX"
@@ -142,6 +145,22 @@ class DeviceState:
                         "label": f.label,
                     }
                 } for fid, f in self.fabrics.items()],
+                "acl": [{
+                    "fabric_index": entry.fabric_index,
+                    "privilege_level": entry.privilege_level.name,
+                    "authentication_mode": entry.authentication_mode.name,
+                    "subjects": entry.subjects,
+                    "targets": [{
+                        "endpoint": target.endpoint,
+                        "cluster": target.cluster,
+                        "device_type": target.device_type,
+                    } for target in entry.targets]
+                } for entry in self.acl],
+                "cluster_data_versions": [{
+                    "endpoint_id": k[0],
+                    "cluster_id": k[1],
+                    "data_version": v
+                } for k, v in self.cluster_data_versions.items()],
                 "events": [{
                     "key": {
                         "endpoint_id": event.key.endpoint_id,
@@ -196,6 +215,23 @@ class DeviceState:
                         admin_vendor_id=int(fabric["fabric"]["admin_vendor_id"]),
                         ipk=base64.b64decode(fabric["fabric"]["ipk"]),
                     )
+
+                for entry in state["acl"]:
+                    self.acl.append(ACLEntry(
+                        fabric_index=int(entry["fabric_index"]),
+                        privilege_level=cluster.Privileges[entry["privilege_level"]],
+                        authentication_mode=acl.AuthenticationMode[entry["authentication_mode"]],
+                        subjects=entry["subjects"],
+                        targets=[acl.ACLTarget(
+                            endpoint=entry["endpoint"] or None,
+                            cluster=target["cluster"] or None,
+                            device_type=entry["device_type"] or None,
+                        ) for target in entry["targets"]],
+                    ))
+
+                for cdv in state["cluster_data_versions"]:
+                    dvk = (int(cdv["endpoint_id"]), int(cdv["cluster_id"]))
+                    self.cluster_data_versions[dvk] = int(cdv["data_version"])
 
                 for event in state["events"]:
                     self.events.append(interaction_model.Event(

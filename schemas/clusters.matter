@@ -195,9 +195,9 @@ AccessControlEntryAuthModeEnum => UNSIGNED INTEGER [ range 8-bits ] {
 subject-id => UNSIGNED INTEGER [ range 64-bits ]
 
 AccessControlTargetStruct => STRUCTURE [ tag-order ] {
-	Cluster [0] : UNSIGNED INTEGER [ range 32-bits ],
-	Endpoint [1] : UNSIGNED INTEGER [ range 16-bits ],
-	DeviceType [2] : UNSIGNED INTEGER [ range 32-bits ]
+	Cluster [0] : UNSIGNED INTEGER [ nullable, range 32-bits ],
+	Endpoint [1] : UNSIGNED INTEGER [ nullable, range 16-bits ],
+	DeviceType [2] : UNSIGNED INTEGER [ nullable, range 32-bits ]
 }
 
 AccessControlEntryStruct => STRUCTURE [ tag-order ] {

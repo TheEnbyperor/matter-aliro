@@ -6,17 +6,19 @@ import threading
 import typing
 import time
 import datetime
-from . import cluster, endpoint, root_node
+from . import cluster, endpoint, root_node, acl
 from .. import device, mdns
-from ..encoding import tlv, protocol_messages, Encodable
+from ..encoding import tlv, protocol_messages
 from ..message import protocol, message_layer, messages
 
 INTERACTION_MODEL_REVISION = 12
 
 logger = logging.getLogger(__name__)
 
+
 class StatusCodeType(enum.IntEnum):
     pass
+
 
 class StatusCode(StatusCodeType):
     SUCCESS = 0x00
@@ -60,6 +62,7 @@ SubscriberKey = collections.namedtuple("SubscriberKey", ["local_fabric_index", "
 AttributeKey = collections.namedtuple("AttributeKey", ["endpoint_id", "cluster_id", "attribute_id"])
 EventKey = collections.namedtuple("EventKey", ["endpoint_id", "cluster_id", "event_id"])
 
+
 @dataclasses.dataclass
 class Event:
     key: EventKey
@@ -72,7 +75,7 @@ class Event:
 class Subscription:
     id: int
     subscriber: SubscriberKey
-    session: message_layer.SessionContexts
+    session: message_layer.SessionContext
     min_interval_secs: int
     max_interval_secs: int
     last_report: float
@@ -80,8 +83,11 @@ class Subscription:
     timer: threading.Timer
     interaction_model: "InteractionModel"
 
-    def __init__(self, sid: int, session: message_layer.SessionContexts, min_interval_secs: int, max_interval_secs: int,
-                 interaction_model: "InteractionModel"):
+    def __init__(
+            self, sid: int, session: message_layer.SessionContext,
+            min_interval_secs: int, max_interval_secs: int,
+            interaction_model: "InteractionModel"
+    ):
         self.id = sid
         self.session = session
         self.subscriber = SubscriberKey(
@@ -230,7 +236,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
         self._endpoints[self._next_endpoint] = d
         if self._next_endpoint != 0:
             self._root_node.parts.add(self._next_endpoint)
-        d.register_im(self._next_endpoint, self)
+        d.register_im(self._next_endpoint, self, self._state)
         self._next_endpoint += 1
         pass
 
@@ -265,6 +271,26 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
         return None
 
     def handle_message(self, exchange: message_layer.Exchange, opcode: int, message: bytes):
+        isd = acl.ISD(
+            authentication_mode=acl.AuthenticationMode.NoAuth,
+            is_commissioning=False,
+            node_id=0,
+            cats=[],
+            fabric_index=0
+        )
+
+        if isinstance(exchange.context, message_layer.SecureSessionContext):
+            if exchange.context.session_type == message_layer.SecureSessionType.PASE:
+                isd.is_commissioning = self._state.in_commissioning_mode
+                isd.authentication_mode = acl.AuthenticationMode.PASE
+                isd.fabric_index = exchange.context.local_fabric_index
+            elif exchange.context.session_type == message_layer.SecureSessionType.CASE:
+                isd.is_commissioning = False
+                isd.authentication_mode = acl.AuthenticationMode.CASE
+                isd.node_id = exchange.context.peer_node_id
+                isd.cats = exchange.context.cats
+                isd.fabric_index = exchange.context.local_fabric_index
+
         if opcode == self.OPCODE_STATUS_RESPONSE:
             try:
                 msg = self.StatusResponseMessage.decode_from_bytes(message)
@@ -280,7 +306,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 logger.warning(f"invalid payload on read request: {e}")
                 self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.read_request(exchange, msg)
+            self.read_request(exchange, msg, isd)
         elif opcode == self.OPCODE_SUBSCRIBE_REQUEST:
             try:
                 msg = self.SubscribeRequestMessage.decode_from_bytes(message)
@@ -288,7 +314,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 logger.warning(f"invalid payload on subscribe request: {e}")
                 self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.subscribe_request(exchange, msg)
+            self.subscribe_request(exchange, msg, isd)
         elif opcode == self.OPCODE_WRITE_REQUEST:
             self.release_next_message(exchange)
             try:
@@ -297,7 +323,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 logger.warning(f"invalid payload on write request: {e}")
                 self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.write_request(exchange, msg)
+            self.write_request(exchange, msg, isd)
         elif opcode == self.OPCODE_INVOKE_REQUEST:
             self.release_next_message(exchange)
             try:
@@ -306,7 +332,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 logger.warning(f"invalid payload on invoke request: {e}")
                 self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.invoke_request(exchange, msg)
+            self.invoke_request(exchange, msg, isd)
         elif opcode == self.OPCODE_TIMED_REQUEST:
             try:
                 msg = self.TimedRequestMessage.decode_from_bytes(message)
@@ -439,36 +465,39 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     def read_request(
             self,
             exchange: message_layer.Exchange,
-            message: protocol_messages.ImProtocol.ReadRequestMessage
+            message: protocol_messages.ImProtocol.ReadRequestMessage,
+            isd: acl.ISD,
     ):
         attribute_reports = []
         event_reports = []
         for node_id, endpoint_id, cluster_id, attribute_id, list_index in self.decompress_paths(
                 message.attribute_requests or []):
-            logger.debug(f"{exchange} - read attribute: endpoint={endpoint_id if endpoint_id is not None else '*'} cluster={f'0x{cluster_id:04X}' if cluster_id is not None else '*'} attribute={f'0x{attribute_id:04X}' if attribute_id is not None else '*'} list_index={list_index}")
-            for resp in self.read_attribute(node_id, endpoint_id, cluster_id, attribute_id, list_index,
-                                            exchange.context):
+            attr_desc = f"endpoint={endpoint_id if endpoint_id is not None else '*'} cluster={f'0x{cluster_id:04X}' if cluster_id is not None else '*'} attribute={f'0x{attribute_id:04X}' if attribute_id is not None else '*'} list_index={list_index}"
+            logger.debug(f"{exchange} - read attribute: {attr_desc}")
+            for resp in self.read_attribute(node_id, endpoint_id, cluster_id, attribute_id, list_index, message.data_version_filters or [],
+                                            exchange.context, isd):
                 if isinstance(resp, self.AttributeDataIB):
                     attribute_reports.append(self.AttributeReportIB(
                         attribute_data=resp,
                         attribute_status=None
                     ))
                 elif isinstance(resp, self.AttributeStatusIB):
-                    print(f"{exchange} - failed to read attribute: {resp.status.status}")
+                    print(f"{exchange} - failed to read attribute: {resp.status.status} ({attr_desc})")
                     attribute_reports.append(self.AttributeReportIB(
                         attribute_data=None,
                         attribute_status=resp
                     ))
         for e in message.event_requests or []:
-            logger.debug(f"{exchange} - read event: endpoint={e.endpoint if e.endpoint is not None else '*'} cluster={f'0x{e.cluster:04X}' if e.cluster is not None else '*'} event={f'0x{e.event:04X}' if e.event is not None else '*'}")
-            for resp in self.read_event(e.node, e.endpoint, e.cluster, e.event, False, exchange.context):
+            event_desc = f"endpoint={e.endpoint if e.endpoint is not None else '*'} cluster={f'0x{e.cluster:04X}' if e.cluster is not None else '*'} event={f'0x{e.event:04X}' if e.event is not None else '*'}"
+            logger.debug(f"{exchange} - read event: {event_desc}")
+            for resp in self.read_event(e.node, e.endpoint, e.cluster, e.event, False, exchange.context, isd):
                 if isinstance(resp, self.EventDataIB):
                     event_reports.append(self.EventReportIB(
                         event_data=resp,
                         event_status=None
                     ))
                 elif isinstance(resp, self.EventStatusIB):
-                    print(f"{exchange} - failed to read event: {resp.status.status}")
+                    print(f"{exchange} - failed to read event: {resp.status.status} ({event_desc})")
                     event_reports.append(self.EventReportIB(
                         event_data=None,
                         event_status=resp
@@ -480,7 +509,8 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     def subscribe_request(
             self,
             exchange: message_layer.Exchange,
-            message: protocol_messages.ImProtocol.SubscribeRequestMessage
+            message: protocol_messages.ImProtocol.SubscribeRequestMessage,
+            isd: acl.ISD,
     ):
         if not message.keep_subscriptions:
             tbd = []
@@ -502,32 +532,36 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             max_interval_secs=message.max_interval_ceiling,
             interaction_model=self
         )
-        for node_id, endpoint_id, cluster_id, attribute_id, _ in self.decompress_paths(message.attribute_requests or []):
-            logger.debug(f"{exchange} - subscribe attribute: endpoint={endpoint_id if endpoint_id is not None else '*'} cluster={f'0x{cluster_id:04X}' if cluster_id is not None else '*'} attribute={f'0x{attribute_id:04X}' if attribute_id is not None else '*'}")
-            for resp in self.read_attribute(node_id, endpoint_id, cluster_id, attribute_id, None, exchange.context,
-                                            subscription):
+        for node_id, endpoint_id, cluster_id, attribute_id, _ in self.decompress_paths(
+                message.attribute_requests or []):
+            attr_desc = f"endpoint={endpoint_id if endpoint_id is not None else '*'} cluster={f'0x{cluster_id:04X}' if cluster_id is not None else '*'} attribute={f'0x{attribute_id:04X}' if attribute_id is not None else '*'}"
+            logger.debug(f"{exchange} - subscribe attribute: {attr_desc}")
+            for resp in self.read_attribute(node_id, endpoint_id, cluster_id, attribute_id, None, message.data_version_filters or [], exchange.context,
+                                            isd, subscription):
                 if isinstance(resp, self.AttributeDataIB):
                     attribute_reports.append(self.AttributeReportIB(
                         attribute_data=resp,
                         attribute_status=None
                     ))
                 elif isinstance(resp, self.AttributeStatusIB):
-                    logger.debug(f"{exchange} - failed to read attribute: {resp.status.status}")
+                    logger.debug(f"{exchange} - failed to read attribute: {resp.status.status} ({attr_desc})")
                     successfully_read = False
                     attribute_reports.append(self.AttributeReportIB(
                         attribute_data=None,
                         attribute_status=resp
                     ))
         for e in message.event_requests or []:
-            logger.debug(f"{exchange} - subscribe event: endpoint={e.endpoint if e.endpoint is not None else '*'} cluster={f'0x{e.cluster:04X}' if e.cluster is not None else '*'} event={f'0x{e.event:04X}' if e.event is not None else '*'}")
-            for resp in self.read_event(e.node, e.endpoint, e.cluster, e.event, e.is_urgent or False, exchange.context, subscription):
+            event_desc = f"endpoint={e.endpoint if e.endpoint is not None else '*'} cluster={f'0x{e.cluster:04X}' if e.cluster is not None else '*'} event={f'0x{e.event:04X}' if e.event is not None else '*'}"
+            logger.debug(f"{exchange} - subscribe event: {event_desc}")
+            for resp in self.read_event(e.node, e.endpoint, e.cluster, e.event, e.is_urgent or False, exchange.context,
+                                        isd, subscription):
                 if isinstance(resp, self.EventDataIB):
                     event_reports.append(self.EventReportIB(
                         event_data=resp,
                         event_status=None
                     ))
                 elif isinstance(resp, self.EventStatusIB):
-                    logger.debug(f"{exchange} - failed to read event: {resp.status.status}")
+                    logger.debug(f"{exchange} - failed to read event: {resp.status.status} ({event_desc})")
                     successfully_read = False
                     event_reports.append(self.EventReportIB(
                         event_data=None,
@@ -556,7 +590,8 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     def write_request(
             self,
             exchange: message_layer.Exchange,
-            message: protocol_messages.ImProtocol.WriteRequestMessage
+            message: protocol_messages.ImProtocol.WriteRequestMessage,
+            isd: acl.ISD,
     ):
         if not self.handle_timed_interaction(exchange, message):
             return
@@ -569,9 +604,10 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
         for req, (node_id, endpoint_id, cluster_id, attribute_id, list_index) in zip(
                 message.write_requests, self.decompress_paths((req.path for req in message.write_requests))
         ):
-            logger.debug(f"{exchange} - write attribute: endpoint={endpoint_id if endpoint_id is not None else '*'} cluster={f'0x{cluster_id:04X}' if cluster_id is not None else '*'} attribute={f'0x{attribute_id:04X}' if attribute_id is not None else '*'}")
+            attr_desc = f"endpoint={endpoint_id if endpoint_id is not None else '*'} cluster={f'0x{cluster_id:04X}' if cluster_id is not None else '*'} attribute={f'0x{attribute_id:04X}' if attribute_id is not None else '*'}"
+            logger.debug(f"{exchange} - write attribute: {attr_desc}")
             resp = self.write_attribute(node_id, endpoint_id, cluster_id, attribute_id, list_index, req.data,
-                                        exchange.context, message.timed_request)
+                                        exchange.context, isd, message.timed_request)
             logger.debug(f"{exchange} - write status: {resp.status}")
             attribute_reports.append(self.AttributeStatusIB(
                 path=self.AttributePathIB(
@@ -598,17 +634,19 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     def invoke_request(
             self,
             exchange: message_layer.Exchange,
-            message: protocol_messages.ImProtocol.InvokeRequestMessage
+            message: protocol_messages.ImProtocol.InvokeRequestMessage,
+            isd: acl.ISD,
     ):
         if not self.handle_timed_interaction(exchange, message):
             return
 
         responses = []
         for path in message.invoke_requests:
-            logger.debug(f"{exchange} - invoke command: endpoint={path.command_path.endpoint} cluster=0x{path.command_path.cluster:04X} command=0x{path.command_path.command:04X}")
+            invoke_desc = f"endpoint={path.command_path.endpoint} cluster=0x{path.command_path.cluster:04X} command=0x{path.command_path.command:04X}"
+            logger.debug(f"{exchange} - invoke command: {invoke_desc}")
             for resp in self.invoke_command(
                     path.command_path.endpoint, path.command_path.cluster, path.command_path.command,
-                    path.command_fields, exchange.context, message.timed_request
+                    path.command_fields, exchange.context, isd, message.timed_request
             ):
                 if isinstance(resp, self.CommandDataIB):
                     resp.command_ref = path.command_ref
@@ -617,7 +655,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                         status=None
                     ))
                 elif isinstance(resp, self.CommandStatusIB):
-                    logger.debug(f"{exchange} - invoke status: {resp.status.status}")
+                    logger.debug(f"{exchange} - invoke status: {resp.status.status} ({invoke_desc})")
                     resp.command_ref = path.command_ref
                     responses.append(self.InvokeResponseIB(
                         command=None,
@@ -660,7 +698,8 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     def handle_timed_interaction(
             self,
             exchange: message_layer.Exchange,
-            message: typing.Union[protocol_messages.ImProtocol.WriteRequestMessage, protocol_messages.ImProtocol.InvokeRequestMessage]
+            message: typing.Union[
+                protocol_messages.ImProtocol.WriteRequestMessage, protocol_messages.ImProtocol.InvokeRequestMessage]
     ):
         if message.timed_request:
             if exchange in self._expired_timeouts:
@@ -696,11 +735,18 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             cluster_id: typing.Optional[int],
             attribute_id: typing.Optional[int],
             list_index: typing.Optional[int | tlv.Null],
-            session: message_layer.SessionContexts,
+            dvf: typing.List[protocol_messages.ImProtocol.DataVersionFilterIB],
+            session: message_layer.SessionContext,
+            isd: acl.ISD,
             subscription: typing.Optional[Subscription] = None,
     ) -> typing.List[
         typing.Union[protocol_messages.ImProtocol.AttributeDataIB, protocol_messages.ImProtocol.AttributeStatusIB]
     ]:
+        data_versions = {
+            (f.path.endpoint, f.path.cluster): f.data_version
+            for f in dvf if f.path.node is not None
+        }
+
         if node_id is not None:
             return [self.AttributeStatusIB(
                 path=self.AttributePathIB(
@@ -719,10 +765,27 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 )
             )]
 
-        attribute_reports = []
-        if endpoint_id is None:
-            endpoints = self._endpoints.keys()
-        else:
+        if endpoint_id is not None and cluster_id is not None and attribute_id is not None:
+            device_types = self._endpoints[endpoint_id].DEVICE_TYPES if endpoint_id in self._endpoints else set()
+            granted_privileges = acl.get_granted_privileges(self._state.acl, isd, endpoint_id, cluster_id, device_types)
+            if cluster.Privileges.View not in granted_privileges:
+                return [self.AttributeStatusIB(
+                    path=self.AttributePathIB(
+                        enable_tag_compression=None,
+                        node=None,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        attribute=attribute_id,
+                        list_index=list_index,
+                        wildcard_path_flags=None,
+                        wildcard_filter_configuration_version=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_ACCESS.value,
+                        cluster_status=0
+                    )
+                )]
+
             if endpoint_id not in self._endpoints:
                 return [self.AttributeStatusIB(
                     path=self.AttributePathIB(
@@ -740,76 +803,184 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                         cluster_status=0
                     )
                 )]
-            endpoints = [endpoint_id]
 
-        for e in endpoints:
-            if cluster_id is None:
-                clusters = self._endpoints[e].servers.values()
-            else:
-                if cluster_id not in self._endpoints[e].servers:
-                    attribute_reports.append(self.AttributeStatusIB(
-                        path=self.AttributePathIB(
-                            enable_tag_compression=None,
-                            node=node_id,
-                            endpoint=e,
-                            cluster=cluster_id,
-                            attribute=attribute_id,
-                            list_index=list_index,
-                            wildcard_path_flags=None,
-                            wildcard_filter_configuration_version=None,
-                        ),
-                        status=self.StatusIB(
-                            status=StatusCode.UNSUPPORTED_CLUSTER.value,
-                            cluster_status=0
-                        )
-                    ))
-                    continue
-                clusters = [self._endpoints[e].servers[cluster_id]]
-            for c in clusters:
-                def register_subscription(attr):
-                    ak = AttributeKey(
-                        endpoint_id=e,
-                        cluster_id=c.cluster_id,
-                        attribute_id=attr.id
+            if cluster_id not in self._endpoints[endpoint_id].servers:
+                return [self.AttributeStatusIB(
+                    path=self.AttributePathIB(
+                        enable_tag_compression=None,
+                        node=node_id,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        attribute=attribute_id,
+                        list_index=list_index,
+                        wildcard_path_flags=None,
+                        wildcard_filter_configuration_version=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_CLUSTER.value,
+                        cluster_status=0
                     )
-                    subscription.add_attribute(ak, c, attr)
+                )]
 
-                data = c.get_attribute_data(attribute_id, list_index, session,
-                                            register_subscription=register_subscription if subscription else None)
-                for d in data:
-                    attribute_reports.append(self.AttributeDataIB(
-                        data_version=c.data_version,
-                        path=self.AttributePathIB(
-                            enable_tag_compression=None,
-                            node=None,
-                            endpoint=e,
-                            cluster=c.cluster_id,
-                            attribute=d.id,
-                            list_index=list_index,
-                            wildcard_path_flags=None,
-                            wildcard_filter_configuration_version=None,
-                        ),
-                        data=d.data
-                    ))
-                if not data:
-                    attribute_reports.append(self.AttributeStatusIB(
-                        path=self.AttributePathIB(
-                            enable_tag_compression=None,
-                            node=None,
-                            endpoint=e,
-                            cluster=c.cluster_id,
-                            attribute=attribute_id,
-                            list_index=list_index,
-                            wildcard_path_flags=None,
-                            wildcard_filter_configuration_version=None,
-                        ),
-                        status=self.StatusIB(
-                            status=StatusCode.UNSUPPORTED_ATTRIBUTE.value,
-                            cluster_status=0
+            c = self._endpoints[endpoint_id].servers[cluster_id]
+            attr = c.get_attribute(attribute_id)
+            if not attr:
+                return [self.AttributeStatusIB(
+                    path=self.AttributePathIB(
+                        enable_tag_compression=None,
+                        node=None,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        attribute=attribute_id,
+                        list_index=list_index,
+                        wildcard_path_flags=None,
+                        wildcard_filter_configuration_version=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_ATTRIBUTE.value,
+                        cluster_status=0
+                    )
+                )]
+
+            if attr.read_privilege not in granted_privileges:
+                return [self.AttributeStatusIB(
+                    path=self.AttributePathIB(
+                        enable_tag_compression=None,
+                        node=None,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        attribute=attribute_id,
+                        list_index=list_index,
+                        wildcard_path_flags=None,
+                        wildcard_filter_configuration_version=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_ACCESS.value,
+                        cluster_status=0
+                    )
+                )]
+
+            if not attr.read_supported():
+                return [self.AttributeStatusIB(
+                    path=self.AttributePathIB(
+                        enable_tag_compression=None,
+                        node=None,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        attribute=attribute_id,
+                        list_index=list_index,
+                        wildcard_path_flags=None,
+                        wildcard_filter_configuration_version=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_READ.value,
+                        cluster_status=0
+                    )
+                )]
+
+            if data_versions.get((endpoint_id, cluster_id), 0) >= c.data_version:
+                return []
+
+            def register_subscription(a):
+                ak = AttributeKey(
+                    endpoint_id=endpoint_id,
+                    cluster_id=cluster_id,
+                    attribute_id=attribute_id,
+                )
+                subscription.add_attribute(ak, c, a)
+
+            data = c.get_attribute_data(
+                attribute_id, list_index, session,
+                register_subscription=register_subscription if subscription else None
+            )
+            return [self.AttributeDataIB(
+                data_version=c.data_version,
+                path=self.AttributePathIB(
+                    enable_tag_compression=None,
+                    node=None,
+                    endpoint=endpoint_id,
+                    cluster=cluster_id,
+                    attribute=attribute_id,
+                    list_index=list_index,
+                    wildcard_path_flags=None,
+                    wildcard_filter_configuration_version=None,
+                ),
+                data=data
+            )]
+
+        else:
+            possible_paths = []
+            attribute_reports = []
+
+            if endpoint_id is None:
+                endpoints = self._endpoints.keys()
+            else:
+                endpoints = [endpoint_id]
+
+            for e in endpoints:
+                if cluster_id is None:
+                    for c in self._endpoints[e].servers.keys():
+                        possible_paths.append((e, c))
+                else:
+                    possible_paths.append((e, cluster_id))
+
+            for e, c in possible_paths:
+                if e not in self._endpoints or c not in self._endpoints[e].servers:
+                    continue
+
+                device_types = self._endpoints[e].DEVICE_TYPES
+                granted_privileges = acl.get_granted_privileges(self._state.acl, isd, e, c, device_types)
+                if cluster.Privileges.View not in granted_privileges:
+                    continue
+
+                cl = self._endpoints[e].servers[c]
+                if data_versions.get((e, c), 0) >= cl.data_version:
+                    continue
+
+                if attribute_id is None:
+                    attrs = cl.get_attributes()
+                else:
+                    if a := cl.get_attribute(attribute_id):
+                        attrs = [a]
+                    else:
+                        attrs = []
+
+                for a in attrs:
+                    if a.read_privilege not in granted_privileges:
+                        continue
+
+                    if not a.read_supported():
+                        continue
+
+                    def register_subscription(a):
+                        ak = AttributeKey(
+                            endpoint_id=e,
+                            cluster_id=c,
+                            attribute_id=a.id,
                         )
-                    ))
+                        subscription.add_attribute(ak, cl, a)
 
-        return attribute_reports
+                    data = cl.get_attribute_data(
+                        a.id, list_index, session,
+                        register_subscription=register_subscription if subscription else None
+                    )
+                    if data:
+                        attribute_reports.append(self.AttributeDataIB(
+                            data_version=cl.data_version,
+                            path=self.AttributePathIB(
+                                enable_tag_compression=None,
+                                node=None,
+                                endpoint=e,
+                                cluster=c,
+                                attribute=a.id,
+                                list_index=list_index,
+                                wildcard_path_flags=None,
+                                wildcard_filter_configuration_version=None,
+                            ),
+                            data=data
+                        ))
+
+            return attribute_reports
 
     def read_event(
             self,
@@ -818,7 +989,8 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             cluster_id: typing.Optional[int],
             event_id: typing.Optional[int],
             is_urgent: bool,
-            session: message_layer.SessionContexts,
+            session: message_layer.SessionContext,
+            isd: acl.ISD,
             subscription: typing.Optional[Subscription] = None,
     ) -> typing.List[
         typing.Union[protocol_messages.ImProtocol.EventDataIB, protocol_messages.ImProtocol.EventStatusIB]
@@ -838,13 +1010,28 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 )
             )]
 
-        if endpoint_id is None:
-            endpoints = self._endpoints.keys()
-        else:
+        if endpoint_id is not None and cluster_id is not None and event_id is not None:
+            device_types = self._endpoints[endpoint_id].DEVICE_TYPES if endpoint_id in self._endpoints else set()
+            granted_privileges = acl.get_granted_privileges(self._state.acl, isd, endpoint_id, cluster_id, device_types)
+            if cluster.Privileges.View not in granted_privileges:
+                return [self.EventStatusIB(
+                path=self.EventPathIB(
+                    node=node_id,
+                    endpoint=endpoint_id,
+                    cluster=cluster_id,
+                    event=event_id,
+                    is_urgent=None,
+                ),
+                status=self.StatusIB(
+                    status=StatusCode.UNSUPPORTED_ACCESS.value,
+                    cluster_status=0
+                )
+            )]
+
             if endpoint_id not in self._endpoints:
                 return [self.EventStatusIB(
                     path=self.EventPathIB(
-                        node=None,
+                        node=node_id,
                         endpoint=endpoint_id,
                         cluster=cluster_id,
                         event=event_id,
@@ -855,64 +1042,112 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                         cluster_status=0
                     )
                 )]
-            endpoints = [endpoint_id]
 
-        event_reports = []
-        for e in endpoints:
-            if cluster_id is None:
-                clusters = self._endpoints[e].servers.values()
+            if cluster_id not in self._endpoints[endpoint_id].servers:
+                return [self.EventStatusIB(
+                    path=self.EventPathIB(
+                        node=node_id,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        event=event_id,
+                        is_urgent=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_CLUSTER.value,
+                        cluster_status=0
+                    )
+                )]
+
+            c = self._endpoints[endpoint_id].servers[cluster_id]
+            evt = c.get_event(event_id)
+            if not evt:
+                return [self.EventStatusIB(
+                    path=self.EventPathIB(
+                        node=node_id,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        event=event_id,
+                        is_urgent=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_EVENT.value,
+                        cluster_status=0
+                    )
+                )]
+
+            if evt.privilege not in granted_privileges:
+                return [self.EventStatusIB(
+                    path=self.EventPathIB(
+                        node=node_id,
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        event=event_id,
+                        is_urgent=None,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_ACCESS.value,
+                        cluster_status=0
+                    )
+                )]
+
+            ek = EventKey(
+                endpoint_id=endpoint_id,
+                cluster_id=c.cluster_id,
+                event_id=event_id,
+            )
+            if subscription:
+                subscription.add_event(ek, is_urgent)
+
+            return []
+
+        else:
+            possible_paths = []
+            event_reports = []
+
+            if endpoint_id is None:
+                endpoints = self._endpoints.keys()
             else:
-                if cluster_id not in self._endpoints[e].servers:
-                    event_reports.append(self.EventStatusIB(
-                        path=self.EventPathIB(
-                            node=node_id,
-                            endpoint=e,
-                            cluster=cluster_id,
-                            event=event_id,
-                            is_urgent=None,
-                        ),
-                        status=self.StatusIB(
-                            status=StatusCode.UNSUPPORTED_CLUSTER.value,
-                            cluster_status=0
-                        )
-                    ))
-                    continue
-                clusters = [self._endpoints[e].servers[cluster_id]]
-            for c in clusters:
-                if event_id is None:
-                    for eid in c.event_ids:
-                        ek = EventKey(
-                            endpoint_id=e,
-                            cluster_id=c.cluster_id,
-                            event_id=eid,
-                        )
-                        if subscription:
-                            subscription.add_event(ek, is_urgent)
+                endpoints = [endpoint_id]
+
+            for e in endpoints:
+                if cluster_id is None:
+                    for c in self._endpoints[e].servers.keys():
+                        possible_paths.append((e, c))
                 else:
-                    if not c.has_event(event_id):
-                        event_reports.append(self.EventStatusIB(
-                            path=self.EventPathIB(
-                                node=None,
-                                endpoint=e,
-                                cluster=c.cluster_id,
-                                event=event_id,
-                                is_urgent=None,
-                            ),
-                            status=self.StatusIB(
-                                status=StatusCode.UNSUPPORTED_EVENT.value,
-                                cluster_status=0
-                            )
-                        ))
+                    possible_paths.append((e, cluster_id))
+
+            for e, c in possible_paths:
+                if e not in self._endpoints or c not in self._endpoints[e].servers:
+                    continue
+
+                device_types = self._endpoints[e].DEVICE_TYPES
+                granted_privileges = acl.get_granted_privileges(self._state.acl, isd, e, c, device_types)
+                if cluster.Privileges.View not in granted_privileges:
+                    continue
+
+                cl = self._endpoints[e].servers[c]
+
+                if event_id is None:
+                    evts = cl.get_events()
+                else:
+                    if e := cl.get_event(event_id):
+                        evts = [e]
+                    else:
+                        evts = []
+
+                for ev in evts:
+                    if ev.privilege not in granted_privileges:
+                        continue
 
                     ek = EventKey(
                         endpoint_id=e,
-                        cluster_id=c.cluster_id,
-                        event_id=event_id,
+                        cluster_id=c,
+                        event_id=ev.id,
                     )
                     if subscription:
                         subscription.add_event(ek, is_urgent)
 
-        return event_reports
+            return event_reports
 
     def write_attribute(
             self,
@@ -922,9 +1157,18 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             attribute_id: int,
             list_index: typing.Optional[int | tlv.Null],
             data,
-            session: message_layer.SessionContexts,
+            session: message_layer.SessionContext,
+            isd: acl.ISD,
             timed_request: bool
     ) -> protocol_messages.ImProtocol.StatusIB:
+        device_types = self._endpoints[endpoint_id].DEVICE_TYPES if endpoint_id in self._endpoints else set()
+        granted_privileges = acl.get_granted_privileges(self._state.acl, isd, endpoint_id, cluster_id, device_types)
+        if cluster.Privileges.View not in granted_privileges:
+            return self.StatusIB(
+                status=StatusCode.UNSUPPORTED_ACCESS.value,
+                cluster_status=0
+            )
+
         if node_id is not None:
             return self.StatusIB(
                 status=StatusCode.UNSUPPORTED_NODE.value,
@@ -954,7 +1198,32 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             )
 
         c = self._endpoints[endpoint_id].servers[cluster_id]
-        data = c.write_attribute_data(attribute_id, action, data, session, timed_request)
+        attr = c.get_attribute(attribute_id)
+        if not attr:
+            return self.StatusIB(
+                status=StatusCode.UNSUPPORTED_ATTRIBUTE.value,
+                cluster_status=0
+            )
+
+        if attr.write_privilege not in granted_privileges:
+            return self.StatusIB(
+                status=StatusCode.UNSUPPORTED_ACCESS.value,
+                cluster_status=0
+            )
+
+        if not attr.write_supported():
+            return self.StatusIB(
+                status=StatusCode.UNSUPPORTED_WRITE.value,
+                cluster_status=0
+            )
+
+        if attr.t_timed and not timed_request:
+            return self.StatusIB(
+                status=StatusCode.NEEDS_TIMED_INTERACTION.value,
+                cluster_status=0
+            )
+
+        data = c.write_attribute_data(attribute_id, action, data, session)
         return self.StatusIB(
             status=data.value,
             cluster_status=0
@@ -966,15 +1235,29 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             cluster_id: int,
             command_id: int,
             data,
-            session: message_layer.SessionContexts,
+            session: message_layer.SessionContext,
+            isd: acl.ISD,
             timed_request: bool
     ) -> typing.List[
         typing.Union[protocol_messages.ImProtocol.CommandDataIB, protocol_messages.ImProtocol.CommandStatusIB]
     ]:
-        command_reports = []
-        if endpoint_id is None:
-            endpoints = self._endpoints.keys()
-        else:
+        if endpoint_id is not None:
+            device_types = self._endpoints[endpoint_id].DEVICE_TYPES if endpoint_id in self._endpoints else set()
+            granted_privileges = acl.get_granted_privileges(self._state.acl, isd, endpoint_id, cluster_id, device_types)
+            if cluster.Privileges.Operate not in granted_privileges:
+                return [self.CommandStatusIB(
+                    path=self.CommandPathIB(
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        command=command_id,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_ACCESS.value,
+                        cluster_status=0
+                    ),
+                    command_ref=None
+                )]
+
             if endpoint_id not in self._endpoints:
                 return [self.CommandStatusIB(
                     path=self.CommandPathIB(
@@ -988,13 +1271,11 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                     ),
                     command_ref=None
                 )]
-            endpoints = [endpoint_id]
 
-        for e in endpoints:
-            if cluster_id not in self._endpoints[e].servers:
-                command_reports.append(self.CommandStatusIB(
+            if cluster_id not in self._endpoints[endpoint_id].servers:
+                return [self.CommandStatusIB(
                     path=self.CommandPathIB(
-                        endpoint=e,
+                        endpoint=endpoint_id,
                         cluster=cluster_id,
                         command=command_id,
                     ),
@@ -1003,17 +1284,107 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                         cluster_status=0
                     ),
                     command_ref=None
-                ))
-                continue
+                )]
 
-            c = self._endpoints[e].servers[cluster_id]
-            data = c.invoke_command(command_id, data, session, timed_request)
-            if data is not None:
+            c = self._endpoints[endpoint_id].servers[cluster_id]
+            com = c.get_command(command_id)
+            if not com:
+                return [self.CommandStatusIB(
+                    path=self.CommandPathIB(
+                        endpoint=endpoint_id,
+                        cluster=c.cluster_id,
+                        command=command_id,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_COMMAND.value,
+                        cluster_status=0
+                    ),
+                    command_ref=None
+                )]
+
+            if com.privilege not in granted_privileges:
+                return [self.CommandStatusIB(
+                    path=self.CommandPathIB(
+                        endpoint=endpoint_id,
+                        cluster=cluster_id,
+                        command=command_id,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.UNSUPPORTED_ACCESS.value,
+                        cluster_status=0
+                    ),
+                    command_ref=None
+                )]
+
+            if com.t_timed and not timed_request:
+                return [self.CommandStatusIB(
+                    path=self.CommandPathIB(
+                        endpoint=endpoint_id,
+                        cluster=c.cluster_id,
+                        command=command_id,
+                    ),
+                    status=self.StatusIB(
+                        status=StatusCode.NEEDS_TIMED_INTERACTION.value,
+                        cluster_status=0
+                    ),
+                    command_ref=None
+                )]
+
+            data = c.invoke_command(command_id, data, session)
+            if data[0] is None:
+                return [self.CommandStatusIB(
+                    path=self.CommandPathIB(
+                        endpoint=endpoint_id,
+                        cluster=c.cluster_id,
+                        command=command_id,
+                    ),
+                    status=self.StatusIB(
+                        status=data[1].value,
+                        cluster_status=0
+                    ),
+                    command_ref=None
+                )]
+            else:
+                return [self.CommandDataIB(
+                    command_path=self.CommandPathIB(
+                        endpoint=endpoint_id,
+                        cluster=c.cluster_id,
+                        command=data[0],
+                    ),
+                    command_fields=data[1],
+                    command_ref=None,
+                )]
+
+        else:
+            possible_paths = [(e, cluster_id) for e in self._endpoints.keys()]
+            command_reports = []
+
+            for e, c in possible_paths:
+                if e not in self._endpoints or c not in self._endpoints[e].servers:
+                    continue
+
+                device_types = self._endpoints[e].DEVICE_TYPES
+                granted_privileges = acl.get_granted_privileges(self._state.acl, isd, e, c, device_types)
+                if cluster.Privileges.Operate not in granted_privileges:
+                    continue
+
+                cl = self._endpoints[e].servers[c]
+                com = cl.get_command(command_id)
+                if not com:
+                    continue
+
+                if com.privilege not in granted_privileges:
+                    continue
+
+                if com.t_timed and not timed_request:
+                    continue
+
+                data = cl.invoke_command(command_id, data, session)
                 if data[0] is None:
                     command_reports.append(self.CommandStatusIB(
                         path=self.CommandPathIB(
                             endpoint=e,
-                            cluster=c.cluster_id,
+                            cluster=c,
                             command=command_id,
                         ),
                         status=self.StatusIB(
@@ -1026,24 +1397,11 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                     command_reports.append(self.CommandDataIB(
                         command_path=self.CommandPathIB(
                             endpoint=e,
-                            cluster=c.cluster_id,
+                            cluster=c,
                             command=data[0],
                         ),
                         command_fields=data[1],
                         command_ref=None,
                     ))
-            else:
-                command_reports.append(self.CommandStatusIB(
-                    path=self.CommandPathIB(
-                        endpoint=e,
-                        cluster=c.cluster_id,
-                        command=command_id,
-                    ),
-                    status=self.StatusIB(
-                        status=StatusCode.UNSUPPORTED_COMMAND.value,
-                        cluster_status=0
-                    ),
-                    command_ref=None
-                ))
 
-        return command_reports
+            return command_reports

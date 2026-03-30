@@ -10,7 +10,7 @@ import threading
 import cryptography.exceptions
 import cryptography.hazmat.primitives.ciphers.aead
 from .. import device, crypto
-from ..crypto import secure_channel
+from ..crypto import secure_channel, certs
 from . import protocol, messages
 
 logger = logging.getLogger(__name__)
@@ -130,13 +130,19 @@ class MessageReceptionState:
             self._update_max(counter)
             return False
 
+class SessionContext(metaclass=abc.ABCMeta):
+    local_fabric_index: int
+    peer_node_id: int
+    attestation_challenge: bytes
+
 
 @dataclasses.dataclass
-class UnsecuredSessionContext:
+class UnsecuredSessionContext(SessionContext):
     peer: NetworkChannel
     session_role: Role
     ephemeral_initiator_node_id: bytes
     message_reception_state: MessageReceptionState
+    local_fabric_index: int = 0
 
     def __hash__(self) -> int:
         return hash((self.session_role, self.ephemeral_initiator_node_id, self.peer))
@@ -156,12 +162,24 @@ class UnsecuredSessionContext:
         role = "I" if self.session_role == Role.Initiator else "R"
         return f"UU:{role}:{self.ephemeral_initiator_node_id.hex():>016}"
 
+    @property
+    def peer_node_id(self) -> int:
+        return 0
+
+    @property
+    def cats(self) -> typing.List[certs.CAT]:
+        return []
+
+    @property
+    def attestation_challenge(self) -> bytes:
+        return b""
+
 class SecureSessionType(enum.Enum):
     PASE = enum.auto()
     CASE = enum.auto()
 
 @dataclasses.dataclass
-class SecureSessionContext:
+class SecureSessionContext(SessionContext):
     peer: NetworkChannel
     session_type: SecureSessionType
     session_role: Role
@@ -169,14 +187,15 @@ class SecureSessionContext:
     peer_session_identifier: int
     i2r_key: bytes
     r2i_key: bytes
-    attestation_challenge: bytes
     shared_secret: bytes
     local_message_counter: int
     message_reception_state: MessageReceptionState
+    resumption_id: bytes
     local_fabric_index: int
     local_node_id: int
     peer_node_id: int
-    resumption_id: bytes
+    cats: typing.List[certs.CAT]
+    attestation_challenge: bytes
     session_timestamp: float = dataclasses.field(default_factory=time.time)
     active_timestamp: float = dataclasses.field(default_factory=time.time)
     session_idle_interval: float = SESSION_IDLE_INTERVAL
@@ -207,9 +226,6 @@ class SecureSessionContext:
     def peer_active_mode(self) -> bool:
         return (time.time() - self.active_timestamp) < self.session_active_threshold
 
-
-SessionContexts = typing.Union[UnsecuredSessionContext, SecureSessionContext]
-
 @dataclasses.dataclass
 class ExchangeRetransmission:
     frame: bytes
@@ -228,7 +244,7 @@ class ExchangeAcknowledgement:
 class Exchange:
     exchange_id: int
     exchange_role: Role
-    context: SessionContexts
+    context: SessionContext
     ephemeral: bool
     retransmissions: typing.Dict[int, ExchangeRetransmission] = dataclasses.field(default_factory=dict)
     acknowledgement: typing.Optional[ExchangeAcknowledgement] = None
@@ -506,7 +522,7 @@ class MessageLayer:
                 timer=t
             )
 
-    def initiate_exchange(self, context: SessionContexts) -> Exchange:
+    def initiate_exchange(self, context: SessionContext) -> Exchange:
         exchange = Exchange(
             exchange_id=self.next_exchange_id,
             exchange_role=Role.Initiator,
@@ -518,7 +534,7 @@ class MessageLayer:
         return exchange
 
     @staticmethod
-    def mrp_backoff_time(session_context: SessionContexts, send_count: int):
+    def mrp_backoff_time(session_context: SessionContext, send_count: int):
         if isinstance(session_context, SecureSessionContext):
             if session_context.peer_active_mode():
                 i = session_context.session_active_interval
@@ -538,7 +554,7 @@ class MessageLayer:
         t.start()
         retransmission.send_count += 1
 
-    def send_with_session(self, data: bytes, session_context: "SessionContexts") -> typing.Tuple[int, bytes]:
+    def send_with_session(self, data: bytes, session_context: SessionContext) -> typing.Tuple[int, bytes]:
         if isinstance(session_context, UnsecuredSessionContext):
             frame = messages.MatterFrame(
                 version=0,
@@ -597,8 +613,11 @@ class MessageLayer:
             session_context.peer.send_frame(d)
             return frame.message_counter, d
 
+        else:
+            raise NotImplementedError()
+
     def find_exchange(
-            self, message: messages.ProtocolMessage, session_context: SessionContexts, is_duplicate: bool
+            self, message: messages.ProtocolMessage, session_context: SessionContext, is_duplicate: bool
     ) -> typing.Optional[Exchange]:
         for exchange in self.exchanges:
             # Per § 4.10.5.1.1

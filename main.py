@@ -55,129 +55,129 @@ class DoorLockCluster(matter.interaction_model.Cluster):
 
     lock_state = matter.interaction_model.cluster.Attribute(
         0x0000, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         p_reportable=True, x_nullable=True
     )
     lock_type = matter.interaction_model.cluster.Attribute(
         0x0001, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View]
+        matter.interaction_model.cluster.Privileges.View
     )
     actuator_enabled = matter.interaction_model.cluster.Attribute(
         0x0002, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View]
+        matter.interaction_model.cluster.Privileges.View
     )
     number_of_total_users_supported = matter.interaction_model.cluster.Attribute(
         0x0011, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
     credential_rules_support = matter.interaction_model.cluster.Attribute(
         0x001B, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
     number_of_credentials_supported_per_user = matter.interaction_model.cluster.Attribute(
         0x001C, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
     operating_mode = matter.interaction_model.cluster.Attribute(
         0x0025, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         p_reportable=True
     )
     supported_operating_modes = matter.interaction_model.cluster.Attribute(
         0x0026, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
     aliro_reader_verification_key = matter.interaction_model.cluster.Attribute(
         0x0080, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.Administer],
+        matter.interaction_model.cluster.Privileges.Administer,
         x_nullable=True
     )
     aliro_reader_group_identifier = matter.interaction_model.cluster.Attribute(
         0x0081, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.Administer],
+        matter.interaction_model.cluster.Privileges.Administer,
         x_nullable=True
     )
     aliro_reader_group_sub_identifier = matter.interaction_model.cluster.Attribute(
         0x0082, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.Administer],
+        matter.interaction_model.cluster.Privileges.Administer,
         x_nullable=True
     )
     aliro_expedited_transaction_supported_protocol_versions = matter.interaction_model.cluster.ListAttribute(
         0x0083, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.Administer],
+        matter.interaction_model.cluster.Privileges.Administer,
         f_fixed=True
     )
     number_of_aliro_credential_issuer_keys_supported = matter.interaction_model.cluster.Attribute(
         0x0087, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
     number_of_aliro_endpoint_keys_supported = matter.interaction_model.cluster.Attribute(
         0x0088, matter.interaction_model.cluster.RWAccess.Read,
-        [matter.interaction_model.cluster.Privileges.View],
+        matter.interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
 
     lock_door = matter.interaction_model.cluster.Command(
         0x0000, None,
-        [matter.interaction_model.cluster.Privileges.Operate], t_timed=True
+        matter.interaction_model.cluster.Privileges.Operate, t_timed=True
     )
     unlock_door = matter.interaction_model.cluster.Command(
         0x0001, None,
-        [matter.interaction_model.cluster.Privileges.Operate], t_timed=True
+        matter.interaction_model.cluster.Privileges.Operate, t_timed=True
     )
     set_user = matter.interaction_model.cluster.Command(
         0x001A, None,
-        [matter.interaction_model.cluster.Privileges.Administer], t_timed=True
+        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
     )
     get_user = matter.interaction_model.cluster.Command(
         0x001B, 0x001C,
-        [matter.interaction_model.cluster.Privileges.Administer]
+        matter.interaction_model.cluster.Privileges.Administer
     )
     clear_user = matter.interaction_model.cluster.Command(
         0x001D, None,
-        [matter.interaction_model.cluster.Privileges.Administer], t_timed=True
+        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
     )
     set_credential = matter.interaction_model.cluster.Command(
         0x0022, 0x0023,
-        [matter.interaction_model.cluster.Privileges.Administer], t_timed=True
+        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
     )
     get_credential_status = matter.interaction_model.cluster.Command(
         0x0024, 0x0025,
-        [matter.interaction_model.cluster.Privileges.Administer]
+        matter.interaction_model.cluster.Privileges.Administer
     )
     clear_credential = matter.interaction_model.cluster.Command(
         0x0026, None,
-        [matter.interaction_model.cluster.Privileges.Administer], t_timed=True
+        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
     )
     set_aliro_reader_config = matter.interaction_model.cluster.Command(
         0x0028, None,
-        [matter.interaction_model.cluster.Privileges.Administer], t_timed=True
+        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
     )
     clear_aliro_reader_config = matter.interaction_model.cluster.Command(
         0x0029, None,
-        [matter.interaction_model.cluster.Privileges.Administer], t_timed=True
+        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
     )
 
     door_lock_alarm = matter.interaction_model.cluster.Event(
         0x0000, matter.interaction_model.cluster.EventPriority.INFO,
-        [matter.interaction_model.cluster.Privileges.View]
+        matter.interaction_model.cluster.Privileges.View
     )
     lock_operation = matter.interaction_model.cluster.Event(
         0x0002, matter.interaction_model.cluster.EventPriority.CRITICAL,
-        [matter.interaction_model.cluster.Privileges.View]
+        matter.interaction_model.cluster.Privileges.View
     )
     lock_operation_error = matter.interaction_model.cluster.Event(
         0x0003, matter.interaction_model.cluster.EventPriority.CRITICAL,
-        [matter.interaction_model.cluster.Privileges.View]
+        matter.interaction_model.cluster.Privileges.View
     )
     lock_user_change = matter.interaction_model.cluster.Event(
         0x0004, matter.interaction_model.cluster.EventPriority.INFO,
-        [matter.interaction_model.cluster.Privileges.View]
+        matter.interaction_model.cluster.Privileges.View
     )
 
     def __init__(self, state: matter.device.DeviceState):
@@ -327,7 +327,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
         return 65535
 
     @lock_door.handler
-    def handle_lock_door(self, _: None, session: matter.message.SessionContexts):
+    def handle_lock_door(self, _: None, session: matter.message.SessionContext):
         print("LOCK DOOR")
         self.locked = True
         self.increment_data_version()
@@ -344,7 +344,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
         return matter.interaction_model.StatusCode.SUCCESS
 
     @unlock_door.handler
-    def handle_unlock_door(self, _: None, session: matter.message.SessionContexts):
+    def handle_unlock_door(self, _: None, session: matter.message.SessionContext):
         print("UNLOCK DOOR")
         self.locked = False
         self.increment_data_version()
@@ -361,7 +361,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
         return matter.interaction_model.StatusCode.SUCCESS
 
     @set_user.handler
-    def handle_set_user(self, req: protocol_messages.SetUserRequest, session: matter.message.SessionContexts):
+    def handle_set_user(self, req: protocol_messages.SetUserRequest, session: matter.message.SessionContext):
         if req.operation_type == protocol_messages.DataOperationTypeEnum.Add.value:
             if req.user_index in self.users:
                 return DoorLockStatusCode.OCCUPIED
@@ -438,6 +438,16 @@ class DoorLockCluster(matter.interaction_model.Cluster):
 
         if req.user_index in self.users:
             user = self.users[req.user_index]
+
+            user_creds = []
+            for ct, creds in self.credentials.items():
+                for cid, cred in creds.items():
+                    if cred.user_index == req.user_index:
+                        user_creds.append(protocol_messages.CredentialStruct(
+                            credential_type=ct.value,
+                            credential_index=cid
+                        ))
+
             return protocol_messages.GetUserResponse(
                 user_index=req.user_index,
                 user_status=user.user_status,
@@ -445,7 +455,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 user_unique_id=user.unique_id,
                 user_type=user.user_type,
                 credential_rule=user.credential_rule,
-                credentials=[],
+                credentials=user_creds,
                 creator_fabric_index=user.creator_fabric_index,
                 last_modified_fabric_index=user.last_modified_fabric_index,
                 next_user_index=next_user_index,
@@ -465,7 +475,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
             )
 
     @clear_user.handler
-    def handle_clear_user(self, req: protocol_messages.ClearUserRequest, session: matter.message.SessionContexts):
+    def handle_clear_user(self, req: protocol_messages.ClearUserRequest, session: matter.message.SessionContext):
         if req.user_index == 0xFFFE:
             self.users = {}
             self.credentials = {
@@ -529,7 +539,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
             return protocol_messages.LockDataTypeEnum.AliroNonEvictableEndpointKey
 
     @set_credential.handler
-    def handle_set_credential(self, req: protocol_messages.SetCredentialRequest, session: matter.message.SessionContexts):
+    def handle_set_credential(self, req: protocol_messages.SetCredentialRequest, session: matter.message.SessionContext):
         credential_type = protocol_messages.CredentialTypeEnum(req.credential.credential_type)
         if credential_type not in self.credentials:
             return protocol_messages.SetCredentialResponse(
@@ -719,7 +729,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
             )
 
     @clear_credential.handler
-    def handle_clear_credential(self, req: protocol_messages.ClearCredentialRequest, session: matter.message.SessionContexts):
+    def handle_clear_credential(self, req: protocol_messages.ClearCredentialRequest, session: matter.message.SessionContext):
         if req.credential == matter.encoding.tlv.Null():
             self.credentials = {
                 protocol_messages.CredentialTypeEnum.AliroCredentialIssuerKey: {},
@@ -806,7 +816,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     d = matter.Device(matter.DeviceMeta(
         vendor_id=0xFFF1,

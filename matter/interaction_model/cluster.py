@@ -4,7 +4,7 @@ import enum
 import inspect
 import typing
 from . import interaction_model
-from .. import message, encoding
+from .. import message, encoding, device
 from ..encoding import tlv
 
 
@@ -28,7 +28,8 @@ class Attribute:
             self,
             attr_id: int,
             access: RWAccess,
-            privileges: typing.List[Privileges],
+            privilege: Privileges,
+            write_privilege: typing.Optional[Privileges]=None,
             c_changes_omitted=False,
             f_fixed=False,
             n_nonvolatile=False,
@@ -40,7 +41,8 @@ class Attribute:
     ):
         self.id = attr_id
         self.access = access
-        self.privileges = privileges
+        self.read_privilege = privilege
+        self.write_privilege = write_privilege or privilege
         self.c_changes_omitted = c_changes_omitted
         self.f_fixed = f_fixed
         self.n_nonvolatile = n_nonvolatile
@@ -72,7 +74,7 @@ class Attribute:
             return False
         return True
 
-    def read(self, obj, session: message.SessionContexts):
+    def read(self, obj, session: message.SessionContext):
         if self._getter is None:
             raise NotImplementedError(f"Getter not set on attribute {self.id:04X}")
 
@@ -83,7 +85,7 @@ class Attribute:
         else:
             return self._getter(obj)
 
-    def write(self, obj, data, session: message.SessionContexts):
+    def write(self, obj, data, session: message.SessionContext):
         if self._setter is None:
             raise NotImplementedError(f"Setter not set on attribute {self.id:04X}")
 
@@ -146,7 +148,7 @@ class ListAttribute(Attribute):
         ft_type_args = typing.get_args(data_type)
         return ft_type_args[0]
 
-    def write_list_replace(self, obj, data, session: message.SessionContexts):
+    def write_list_replace(self, obj, data, session: message.SessionContext):
         if self._list_replacer is None:
             raise NotImplementedError(f"List replacer not set on attribute {self.id:04X}")
 
@@ -170,7 +172,7 @@ class ListAttribute(Attribute):
         else:
             return self._list_replacer(obj, data)
 
-    def write_list_add(self, obj, data, session: message.SessionContexts):
+    def write_list_add(self, obj, data, session: message.SessionContext):
         if self._list_adder is None:
             raise NotImplementedError(f"List adder not set on attribute {self.id:04X}")
 
@@ -202,19 +204,19 @@ class Command:
             self,
             command_id: int,
             response_command_id: typing.Optional[int],
-            privileges: typing.List[Privileges],
+            privilege: Privileges,
             t_timed=False,
     ):
         self.id = command_id
         self.response_id = response_command_id
-        self.privileges = privileges
+        self.privilege = privilege
         self.t_timed = t_timed
         self._exec = None
 
     def handler(self, handler):
         self._exec = handler
 
-    def __call__(self, obj, data, session: message.SessionContexts):
+    def __call__(self, obj, data, session: message.SessionContext):
         if self._exec is None:
             raise NotImplementedError(f"Handler not set on command {self.id:04X}")
 
@@ -258,22 +260,21 @@ class Event:
             self,
             event_id: int,
             default_priority: EventPriority,
-            privileges: typing.List[Privileges],
+            privilege: Privileges,
     ):
         self.id = event_id
         self.default_priority = default_priority
-        self.privileges = privileges
+        self.privilege = privilege
 
-AttributeData = collections.namedtuple("AttributeData", ["id", "data"])
 EventReport = collections.namedtuple("EventReport", ["event", "data"])
 
 class Cluster(metaclass=abc.ABCMeta):
-    generated_command_list = ListAttribute(0xFFF8, RWAccess.Read, [Privileges.View], f_fixed=True)
-    accepted_command_list = ListAttribute(0xFFF9, RWAccess.Read, [Privileges.View], f_fixed=True)
-    event_list = ListAttribute(0xFFFA, RWAccess.Read, [Privileges.View], f_fixed=True)
-    attribute_list = ListAttribute(0xFFFB, RWAccess.Read, [Privileges.View], f_fixed=True)
-    feature_map = Attribute(0xFFFC, RWAccess.Read, [Privileges.View], f_fixed=True)
-    cluster_revision = Attribute(0xFFFD, RWAccess.Read, [Privileges.View], f_fixed=True)
+    generated_command_list = ListAttribute(0xFFF8, RWAccess.Read, Privileges.View, f_fixed=True)
+    accepted_command_list = ListAttribute(0xFFF9, RWAccess.Read, Privileges.View, f_fixed=True)
+    event_list = ListAttribute(0xFFFA, RWAccess.Read, Privileges.View, f_fixed=True)
+    attribute_list = ListAttribute(0xFFFB, RWAccess.Read, Privileges.View, f_fixed=True)
+    feature_map = Attribute(0xFFFC, RWAccess.Read, Privileges.View, f_fixed=True)
+    cluster_revision = Attribute(0xFFFD, RWAccess.Read, Privileges.View, f_fixed=True)
 
     def __init__(self):
         self._attributes: typing.Dict[int, Attribute] = {}
@@ -282,6 +283,7 @@ class Cluster(metaclass=abc.ABCMeta):
         self._response_commands = set()
         self._endpoint_id = None
         self._interaction_model: typing.Optional[interaction_model.InteractionModel] = None
+        self._device_state: typing.Optional[device.DeviceState] = None
         self.data_version = 1
 
         for superclass in type(self).__mro__:
@@ -298,9 +300,13 @@ class Cluster(metaclass=abc.ABCMeta):
                 elif isinstance(descriptor, Event):
                     self._events[descriptor.id] = descriptor
 
-    def register_im(self, endpoint_id: int, im: interaction_model.InteractionModel):
+    def register_im(self, endpoint_id: int, im: interaction_model.InteractionModel, device_state: device.DeviceState):
         self._endpoint_id = endpoint_id
         self._interaction_model = im
+        self._device_state = device_state
+        dvk = (endpoint_id, self.cluster_id)
+        if dvk in device_state.cluster_data_versions:
+            self.data_version = device_state.cluster_data_versions[dvk]
 
     def attributes_changed(self, attributes: typing.List[Attribute]):
         keys = [interaction_model.AttributeKey(
@@ -321,6 +327,8 @@ class Cluster(metaclass=abc.ABCMeta):
 
     def increment_data_version(self):
         self.data_version = (self.data_version + 1) % 2**32
+        if self._device_state:
+            self._device_state.cluster_data_versions[(self._endpoint_id, self.cluster_id)] = self.data_version
 
     @property
     @abc.abstractmethod
@@ -363,50 +371,48 @@ class Cluster(metaclass=abc.ABCMeta):
     def read_generated_command_list(self) -> typing.List[encoding.TLVUInt]:
         return [encoding.TLVUInt(v) for v in self._response_commands]
 
+    def get_attributes(self) -> typing.List[Attribute]:
+        return list(self._attributes.values())
+
+    def get_attribute(self, attribute_id: int) -> typing.Optional[Attribute]:
+        return self._attributes.get(attribute_id)
+
+    def get_commands(self) -> typing.List[Command]:
+        return list(self._commands.values())
+
+    def get_command(self, command_id: int) -> typing.Optional[Command]:
+        return self._commands.get(command_id)
+
+    def get_events(self) -> typing.List[Event]:
+        return list(self._events.values())
+
+    def get_event(self, event_id: int) -> typing.Optional[Event]:
+        return self._events.get(event_id)
+
     def get_attribute_data(
-            self, attribute_id: typing.Optional[int], list_index: typing.Optional[int],
-            session: message.SessionContexts,
+            self, attribute_id: int,
+            list_index: typing.Optional[int],
+            session: message.SessionContext,
             register_subscription: typing.Optional[typing.Callable[[Attribute], None]] = None
-    ) -> typing.List[AttributeData]:
-        if attribute_id is None:
-            out = []
-            for attr_id, attribute in self._attributes.items():
-                if attribute.read_supported():
-                    out.append(AttributeData(attr_id, attribute.read(self, session)))
-                    if register_subscription and not attribute.c_changes_omitted and not attribute.f_fixed:
-                        register_subscription(attribute)
-            return out
-
-        if attribute_id not in self._attributes:
-            return []
-
+    ) -> typing.Optional[typing.Any]:
         attr = self._attributes[attribute_id]
-        if not attr.read_supported():
-            return []
 
         if list_index is not None:
             if not isinstance(attr, ListAttribute):
-                return []
+                return None
             if register_subscription and not attr.c_changes_omitted and not attr.f_fixed:
                 register_subscription(attr)
-            return [AttributeData(attribute_id, attr.read_list(self, list_index, session))]
+            return attr.read_list(self, list_index, session)
 
         if register_subscription and not attr.c_changes_omitted and not attr.f_fixed:
             register_subscription(attr)
-        return [AttributeData(attribute_id, attr.read(self, session))]
+        return attr.read(self, session)
 
     def write_attribute_data(
-            self, attribute_id: int, action: WriteAction, data, session: message.SessionContexts, timed_request: bool
+            self, attribute_id: int, action: WriteAction, data,
+            session: message.SessionContext
     ) -> interaction_model.StatusCode:
-        if attribute_id not in self._attributes:
-            return interaction_model.StatusCode.UNSUPPORTED_ATTRIBUTE
-
         attr = self._attributes[attribute_id]
-        if not attr.write_supported():
-            return interaction_model.StatusCode.UNSUPPORTED_WRITE
-        if attr.t_timed and not timed_request:
-            return interaction_model.StatusCode.NEEDS_TIMED_INTERACTION
-
         if isinstance(attr, ListAttribute):
             if action == WriteAction.Replace:
                 return attr.write_list_replace(self, data, session)
@@ -418,19 +424,6 @@ class Cluster(metaclass=abc.ABCMeta):
 
             return attr.write(self, data, session)
 
-    def has_event(self, event_id: int) -> bool:
-        return event_id in self._events
-
-    @property
-    def event_ids(self) -> typing.List[int]:
-        return list(self._events.keys())
-
-    def invoke_command(self, command_id: int, data, session: message.SessionContexts, timed_request: bool):
-        if command_id not in self._commands:
-            return None
-
+    def invoke_command(self, command_id: int, data, session: message.SessionContext):
         c = self._commands[command_id]
-        if c.t_timed and not timed_request:
-            return None, interaction_model.StatusCode.NEEDS_TIMED_INTERACTION
-
         return c(self, data, session)

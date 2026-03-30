@@ -2,6 +2,7 @@ import collections
 import logging
 import typing
 from . import interaction_model, cluster
+from .. import device
 from ..encoding import protocol_messages
 
 DeviceType = collections.namedtuple("DeviceType", ["id", "revision"])
@@ -22,6 +23,7 @@ class Endpoint:
         self.clients = {}
         self.endpoint_id = None
         self.interaction_model = None
+        self.device_state = None
 
         self.add_server(Descriptor(self))
         self.add_server(Identify(self))
@@ -29,23 +31,24 @@ class Endpoint:
     def add_server(self, c: cluster.Cluster):
         self.servers[c.cluster_id] = c
 
-    def register_im(self, endpoint_id: int, im: interaction_model.InteractionModel):
+    def register_im(self, endpoint_id: int, im: interaction_model.InteractionModel, device_state: device.DeviceState):
         self.endpoint_id = endpoint_id
         self.interaction_model = im
+        self.device_state = device_state
         for c in self.servers.values():
-            c.register_im(endpoint_id, im)
+            c.register_im(endpoint_id, im, device_state)
 
 
 class Descriptor(cluster.Cluster):
     cluster_id = 0x001D
     cluster_revision_number = 3
 
-    device_type_list = cluster.Attribute(0x0000, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    server_list = cluster.Attribute(0x0001, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    client_list = cluster.Attribute(0x0002, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    parts_list = cluster.Attribute(0x0003, cluster.RWAccess.Read, [cluster.Privileges.View])
-    tag_list = cluster.Attribute(0x0004, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
-    endpoint_unique_id = cluster.Attribute(0x0005, cluster.RWAccess.Read, [cluster.Privileges.View], f_fixed=True)
+    device_type_list = cluster.Attribute(0x0000, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    server_list = cluster.Attribute(0x0001, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    client_list = cluster.Attribute(0x0002, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    parts_list = cluster.Attribute(0x0003, cluster.RWAccess.Read, cluster.Privileges.View)
+    tag_list = cluster.Attribute(0x0004, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    endpoint_unique_id = cluster.Attribute(0x0005, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
 
     def __init__(self, endpoint: Endpoint):
         super().__init__()
@@ -83,9 +86,9 @@ class Identify(cluster.Cluster):
     cluster_id = 0x0003
     cluster_revision_number = 6
 
-    identify_time = cluster.Attribute(0x000, cluster.RWAccess.ReadWrite, [cluster.Privileges.View, cluster.Privileges.Operate], q_quieter_reporting=True)
-    identity_type = cluster.Attribute(0x0001, cluster.RWAccess.Read, [cluster.Privileges.View])
-    identify = cluster.Command(0x0000, None, [cluster.Privileges.Manage])
+    identify_time = cluster.Attribute(0x000, cluster.RWAccess.ReadWrite, cluster.Privileges.View, cluster.Privileges.Operate, q_quieter_reporting=True)
+    identity_type = cluster.Attribute(0x0001, cluster.RWAccess.Read, cluster.Privileges.View)
+    identify = cluster.Command(0x0000, None, cluster.Privileges.Manage)
 
     def __init__(self, endpoint: Endpoint):
         super().__init__()

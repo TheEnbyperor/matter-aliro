@@ -8,7 +8,13 @@ import cryptography.hazmat.primitives.asymmetric.utils
 import cryptography.hazmat.primitives.asymmetric.ec
 import cryptography.hazmat.primitives.hashes
 import ber_tlv.tlv
+import dataclasses
 from ..encoding import protocol_messages
+
+@dataclasses.dataclass
+class CAT:
+    id: int
+    version: int
 
 ECDSA_WITH_SHA256 = bytes([0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02])
 EC_PUB_KEY = bytes([0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01])
