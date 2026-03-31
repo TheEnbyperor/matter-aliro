@@ -52,7 +52,10 @@ class UDPChannel(NetworkChannel):
         self.peer_addr = peer_addr
 
     def send_frame(self, frame: bytes) -> None:
-        self.socket.sendto(frame, self.peer_addr)
+        try:
+            self.socket.sendto(frame, self.peer_addr)
+        except OSError:
+            pass
 
     def __hash__(self) -> int:
         return hash(self.peer_addr)
@@ -339,7 +342,7 @@ class MessageLayer:
             if frame.session_id in self.secure_unicast_session_context:
                 session_context = self.secure_unicast_session_context[frame.session_id]
                 if frame.privacy:
-                    logger.warn("Unimplemented: frame privacy")
+                    logger.warning("Unimplemented: frame privacy")
                     return
 
                 # Per § 4.8.3

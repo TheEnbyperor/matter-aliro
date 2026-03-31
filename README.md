@@ -8,5 +8,3 @@ Note, this project is currently missing a few crucial elements:
 - The Administrator Commissioning cluster is not implemented. This means it is impossible to generate a new pairing 
     passcode to add the device to a second fabric.
 - Group Sessions and the Group Key Management cluster are not implemented.
-- The NFC half of Aliro is not implemented. The lock device simply saves received public keys to disk, and does nothing
-    with them.
