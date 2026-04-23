@@ -161,6 +161,31 @@ FabricDescriptorStruct => STRUCTURE [ tag-order ] {
 	VIDVerificationStatement [6, optional] : OCTET STRING [ length 0..85 ]
 }
 
+CommissioningWindowStatus => UNSIGNED INTEGER [ range 8-bits ] {
+	WindowNotOpen = 0,
+	EnhancedWindowOpen = 1,
+	BasicWindowOpen = 2
+}
+
+CommissioningWindowStatusCode => UNSIGNED INTEGER [ range 8-bits ] {
+	Success = 0,
+	Busy = 2,
+	PAKEParameterError = 3,
+	WindowNotOpen = 4
+}
+
+OpenCommissioningWindow => STRUCTURE [ tag-order ] {
+	CommissioningTimeout [0] : UNSIGNED INTEGER [ range 16-bits ],
+	PAKEPasscodeVerifier [1] : OCTET STRING [ length 97 ],
+	Discriminator [2] : UNSIGNED INTEGER [ range 0..4095 ],
+	Iterations [3] : UNSIGNED INTEGER [ range 1000..100000 ],
+	Salt [4] : OCTET STRING [ length 16..32 ]
+}
+
+OpenBasicCommissioningWindow => STRUCTURE [ tag-order ] {
+	CommissioningTimeout [0] : UNSIGNED INTEGER [ range 16-bits ]
+}
+
 DeviceTypeStruct => STRUCTURE [ tag-order ] {
 	DeviceType [0] : UNSIGNED INTEGER [ range 32-bits ],
 	Revision [1] : UNSIGNED INTEGER [ range 16-bits ]

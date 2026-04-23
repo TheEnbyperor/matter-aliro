@@ -17,9 +17,9 @@ class ImProtocol:
       implicit_vendor_id = 0
       implicit_profile = 1
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="node", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="endpoint", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="cluster", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="node", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="endpoint", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="cluster", optional=False),
       )
 
   @dataclasses.dataclass
@@ -37,14 +37,14 @@ class ImProtocol:
       implicit_vendor_id = 0
       implicit_profile = 1
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="enable_tag_compression", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="node", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="endpoint", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="cluster", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="attribute", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="list_index", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(6), source="wildcard_path_flags", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(7), source="wildcard_filter_configuration_version", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="enable_tag_compression", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="node", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="endpoint", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="cluster", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="attribute", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="list_index", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(6), source="wildcard_path_flags", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(7), source="wildcard_filter_configuration_version", optional=True),
       )
 
   @dataclasses.dataclass
@@ -59,11 +59,11 @@ class ImProtocol:
       implicit_vendor_id = 0
       implicit_profile = 1
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="node", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="endpoint", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="cluster", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="event", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="is_urgent", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="node", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="endpoint", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="cluster", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="event", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="is_urgent", optional=True),
       )
 
   @dataclasses.dataclass
@@ -76,9 +76,9 @@ class ImProtocol:
       implicit_vendor_id = 0
       implicit_profile = 1
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="endpoint", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="cluster", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="command", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="endpoint", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="cluster", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="command", optional=True),
       )
 
   @dataclasses.dataclass
@@ -92,8 +92,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="node", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_min", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="node", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_min", optional=False),
       )
 
   @dataclasses.dataclass
@@ -107,8 +107,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="data_version", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="data_version", optional=False),
       )
 
   @dataclasses.dataclass
@@ -123,9 +123,9 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="data_version", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="path", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="data", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="data_version", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="path", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="data", optional=False),
       )
 
   @dataclasses.dataclass
@@ -145,14 +145,14 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_number", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="priority", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="epoch_timestamp", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="system_timestamp", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="delta_epoch_timestamp", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(6), source="delta_system_timestamp", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(7), source="data", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_number", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="priority", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="epoch_timestamp", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="system_timestamp", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="delta_epoch_timestamp", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(6), source="delta_system_timestamp", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(7), source="data", optional=False),
       )
 
   @dataclasses.dataclass
@@ -166,8 +166,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="status", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="cluster_status", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="status", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="cluster_status", optional=False),
       )
 
   @dataclasses.dataclass
@@ -181,8 +181,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=False),
       )
 
   @dataclasses.dataclass
@@ -196,8 +196,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=False),
       )
 
   @dataclasses.dataclass
@@ -212,9 +212,9 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="command_ref", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="path", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="command_ref", optional=True),
       )
 
   @dataclasses.dataclass
@@ -228,8 +228,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="attribute_status", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="attribute_data", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="attribute_status", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="attribute_data", optional=True),
       )
 
   @dataclasses.dataclass
@@ -243,8 +243,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="event_status", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_data", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="event_status", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_data", optional=True),
       )
 
   @dataclasses.dataclass
@@ -259,9 +259,9 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="command_path", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="command_fields", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="command_ref", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="command_path", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="command_fields", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="command_ref", optional=True),
       )
 
   @dataclasses.dataclass
@@ -275,8 +275,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="command", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="command", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="status", optional=True),
       )
 
   @dataclasses.dataclass
@@ -290,8 +290,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="status", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="status", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -309,12 +309,12 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="attribute_requests", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_requests", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="event_filters", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="fabric_filtered", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="data_version_filters", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="attribute_requests", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="event_requests", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="event_filters", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="fabric_filtered", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="data_version_filters", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -332,12 +332,12 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="subscription_id", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="attribute_reports", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="event_reports", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="more_chunked_messages", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="suppress_response", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="subscription_id", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="attribute_reports", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="event_reports", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="more_chunked_messages", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="suppress_response", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -358,15 +358,15 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="keep_subscriptions", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="min_interval_floor", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="max_interval_ceiling", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="attribute_requests", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="event_requests", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="event_filters", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(7), source="fabric_filtered", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(8), source="data_version_filters", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="keep_subscriptions", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="min_interval_floor", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="max_interval_ceiling", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="attribute_requests", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="event_requests", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="event_filters", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(7), source="fabric_filtered", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(8), source="data_version_filters", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -381,9 +381,9 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="subscription_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="max_interval", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="subscription_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="max_interval", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -400,11 +400,11 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="suppress_response", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="timed_request", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="write_requests", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="more_chunked_messages", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="suppress_response", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="timed_request", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="write_requests", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="more_chunked_messages", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -418,8 +418,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="write_responses", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="write_responses", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -435,10 +435,10 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="suppress_response", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="timed_request", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="invoke_requests", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="suppress_response", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="timed_request", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="invoke_requests", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -454,10 +454,10 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="suppress_response", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="invoke_responses", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="more_chunked_messages", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="suppress_response", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="invoke_responses", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="more_chunked_messages", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
   @dataclasses.dataclass
@@ -471,8 +471,8 @@ class ImProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(0), source="timeout", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(0), source="timeout", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(255), source="interaction_model_revision", optional=False),
       )
 
 
@@ -484,7 +484,7 @@ class StartUpEvent(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="software_version", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="software_version", optional=False),
     )
 
 @dataclasses.dataclass
@@ -496,8 +496,8 @@ class CapabilityMinimaStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="case_sessions_per_fabric", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="subscriptions_per_fabric", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="case_sessions_per_fabric", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="subscriptions_per_fabric", optional=False),
     )
 
 @dataclasses.dataclass
@@ -509,8 +509,8 @@ class BasicCommissioningInfo(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="fail_safe_expiry_length_seconds", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="max_cumulative_failsafe_seconds", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="fail_safe_expiry_length_seconds", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="max_cumulative_failsafe_seconds", optional=False),
     )
 
 @dataclasses.dataclass
@@ -522,8 +522,8 @@ class ArmFailSafe(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="expiry_length_seconds", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="breadcrumb", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="expiry_length_seconds", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="breadcrumb", optional=False),
     )
 
 @dataclasses.dataclass
@@ -535,8 +535,8 @@ class ArmFailSafeResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="error_code", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="debug_text", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="error_code", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="debug_text", optional=False),
     )
 
 class RegulatoryLocationEnum(enum.IntEnum):
@@ -554,9 +554,9 @@ class SetRegulatoryConfig(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="new_regulatory_config", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="country_code", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="breadcrumb", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="new_regulatory_config", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="country_code", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="breadcrumb", optional=False),
     )
 
 class CommissioningErrorEnum(enum.IntEnum):
@@ -578,8 +578,8 @@ class SetRegulatoryConfigResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="error_code", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="debug_text", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="error_code", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="debug_text", optional=False),
     )
 
 @dataclasses.dataclass
@@ -591,8 +591,8 @@ class CommissioningCompleteResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="error_code", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="debug_text", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="error_code", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="debug_text", optional=False),
     )
 
 class CertificateTypeEnum(enum.IntEnum):
@@ -607,7 +607,7 @@ class CertificateChainRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="certificate_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="certificate_type", optional=False),
     )
 
 @dataclasses.dataclass
@@ -618,7 +618,7 @@ class CertificateChainResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="certificate", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="certificate", optional=False),
     )
 
 @dataclasses.dataclass
@@ -629,7 +629,7 @@ class AttestationRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="attestation_nonce", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="attestation_nonce", optional=False),
     )
 
 @dataclasses.dataclass
@@ -641,8 +641,8 @@ class AttestationResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="attestation_elements", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="attestation_signature", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="attestation_elements", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="attestation_signature", optional=False),
     )
 
 @dataclasses.dataclass
@@ -656,10 +656,10 @@ class AttestationElements(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="certification_declaration", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="attestation_nonce", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="timestamp", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="firmware_information", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="certification_declaration", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="attestation_nonce", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="timestamp", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="firmware_information", optional=True),
     )
 
 @dataclasses.dataclass
@@ -671,8 +671,8 @@ class CSRRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="csr_nonce", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="is_for_update_noc", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="csr_nonce", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="is_for_update_noc", optional=True),
     )
 
 @dataclasses.dataclass
@@ -684,8 +684,8 @@ class CSRResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="nocsr_elements", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="attestation_signature", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="nocsr_elements", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="attestation_signature", optional=False),
     )
 
 @dataclasses.dataclass
@@ -700,11 +700,11 @@ class NocsrElements(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="csr", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="csr_nonce", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="vendor_reserved1", optional=True),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="vendor_reserved2", optional=True),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="vendor_reserved3", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="csr", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="csr_nonce", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="vendor_reserved1", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="vendor_reserved2", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="vendor_reserved3", optional=True),
     )
 
 class NodeOperationalCertStatusEnum(enum.IntEnum):
@@ -731,11 +731,11 @@ class AddNOC(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="noc_value", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="icac_value", optional=True),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="ipk_value", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="case_admin_subject", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="admin_vendor_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="noc_value", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="icac_value", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="ipk_value", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="case_admin_subject", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="admin_vendor_id", optional=False),
     )
 
 @dataclasses.dataclass
@@ -747,8 +747,8 @@ class UpdateNOC(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="noc_value", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="icac_value", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="noc_value", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="icac_value", optional=True),
     )
 
 @dataclasses.dataclass
@@ -759,7 +759,7 @@ class UpdateFabricLabel(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="label", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="label", optional=False),
     )
 
 @dataclasses.dataclass
@@ -770,7 +770,7 @@ class RemoveFabric(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="fabric_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -783,9 +783,9 @@ class NOCResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="status_code", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="fabric_index", optional=True),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="debug_text", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="status_code", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="fabric_index", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="debug_text", optional=False),
     )
 
 @dataclasses.dataclass
@@ -796,7 +796,7 @@ class AddTrustedRootCertificate(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="root_ca_certificate", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="root_ca_certificate", optional=False),
     )
 
 @dataclasses.dataclass
@@ -809,9 +809,9 @@ class NOCStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="NOC", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="ICAC", optional=True),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="VVSC", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="NOC", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="ICAC", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="VVSC", optional=True),
     )
 
 @dataclasses.dataclass
@@ -827,12 +827,53 @@ class FabricDescriptorStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="root_public_key", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="vendor_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="fabric_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="node_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="label", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(6), source="vid_verification_statement", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="root_public_key", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="vendor_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="fabric_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="node_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="label", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(6), source="vid_verification_statement", optional=True),
+    )
+
+class CommissioningWindowStatusEnum(enum.IntEnum):
+  WindowNotOpen = 0
+  EnhancedWindowOpen = 1
+  BasicWindowOpen = 2
+
+class CommissioningWindowStatusCodeEnum(enum.IntEnum):
+  Success = 0
+  Busy = 2
+  PAKEParameterError = 3
+  WindowNotOpen = 4
+
+@dataclasses.dataclass
+class OpenCommissioningWindow(tlv.Structure):
+  commissioning_timeout: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  pake_passcode_verifier: bytes = dataclasses.field(metadata={'min_len': 97, 'max_len': 97})
+  discriminator: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 4095})
+  iterations: int = dataclasses.field(metadata={'signed': False, 'min': 1000, 'max': 100000})
+  salt: bytes = dataclasses.field(metadata={'min_len': 16, 'max_len': 32})
+
+  class Meta:
+    order = "tag"
+    extensible = False
+    fields = (
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="commissioning_timeout", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="pake_passcode_verifier", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="discriminator", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="iterations", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="salt", optional=False),
+    )
+
+@dataclasses.dataclass
+class OpenBasicCommissioningWindow(tlv.Structure):
+  commissioning_timeout: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+
+  class Meta:
+    order = "tag"
+    extensible = False
+    fields = (
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="commissioning_timeout", optional=False),
     )
 
 @dataclasses.dataclass
@@ -844,8 +885,8 @@ class DeviceTypeStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="device_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="revision", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="device_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="revision", optional=False),
     )
 
 @dataclasses.dataclass
@@ -859,10 +900,10 @@ class SemanticTagStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="mfg_code", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="namespace_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="tag", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="label", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="mfg_code", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="namespace_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="tag", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="label", optional=True),
     )
 
 @dataclasses.dataclass
@@ -874,8 +915,8 @@ class NetworkInfoStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="network_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="connected", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="network_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="connected", optional=False),
     )
 
 class AccessControlEntryPrivilegeEnumEnum(enum.IntEnum):
@@ -900,9 +941,9 @@ class AccessControlTargetStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="cluster", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="endpoint", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="device_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="cluster", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="endpoint", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="device_type", optional=False),
     )
 
 @dataclasses.dataclass
@@ -916,10 +957,10 @@ class AccessControlEntryStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="privilege", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="auth_mode", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="subjects", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="targets", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="privilege", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="auth_mode", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="subjects", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="targets", optional=False),
     )
 
 @dataclasses.dataclass
@@ -930,7 +971,7 @@ class AccessControlExtensionStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="data", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="data", optional=False),
     )
 
 class IdentifyTypeEnumEnum(enum.IntEnum):
@@ -949,7 +990,7 @@ class IdentifyRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="identify_time", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="identify_time", optional=False),
     )
 
 class LockStateEnum(enum.IntEnum):
@@ -1014,8 +1055,8 @@ class CredentialStruct(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="credential_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="credential_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1026,7 +1067,7 @@ class LockDoorRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="pin_code", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="pin_code", optional=True),
     )
 
 @dataclasses.dataclass
@@ -1043,13 +1084,13 @@ class SetUserRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="operation_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="user_name", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_unique_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="user_status", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="user_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(6), source="credential_rule", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="operation_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="user_name", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_unique_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="user_status", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="user_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(6), source="credential_rule", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1060,7 +1101,7 @@ class GetUserRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="user_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1080,16 +1121,16 @@ class GetUserResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_name", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="user_unique_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_status", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="user_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="credential_rule", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(6), source="credentials", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(7), source="creator_fabric_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(8), source="last_modified_fabric_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(9), source="next_user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_name", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="user_unique_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_status", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="user_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="credential_rule", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(6), source="credentials", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(7), source="creator_fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(8), source="last_modified_fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(9), source="next_user_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1100,7 +1141,7 @@ class ClearUserRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="user_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1116,12 +1157,12 @@ class SetCredentialRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="operation_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="credential", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="credential_data", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="user_status", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="user_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="operation_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="credential", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="credential_data", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="user_status", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="user_type", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1134,9 +1175,9 @@ class SetCredentialResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="status", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="next_credential_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="status", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="next_credential_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1147,7 +1188,7 @@ class GetCredentialStatusRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1163,12 +1204,12 @@ class GetCredentialStatusResponse(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential_exists", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="creator_fabric_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="last_modified_fabric_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="next_credential_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="credential_data", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential_exists", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="creator_fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="last_modified_fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="next_credential_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="credential_data", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1179,7 +1220,7 @@ class ClearCredentialRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="credential", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1192,9 +1233,9 @@ class SetAliroReaderConfigRequest(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="signing_key", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="verification_key", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="group_identifier", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="signing_key", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="verification_key", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="group_identifier", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1205,7 +1246,7 @@ class DoorLockAlarm(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="alarm_code", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="alarm_code", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1216,7 +1257,7 @@ class DoorStateChange(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="door_state", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="door_state", optional=False),
     )
 
 class LockOperationTypeEnum(enum.IntEnum):
@@ -1252,12 +1293,12 @@ class LockOperation(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="lock_operation_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="operation_source", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="fabric_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="source_node", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="credentials", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="lock_operation_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="operation_source", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="source_node", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="credentials", optional=False),
     )
 
 @dataclasses.dataclass
@@ -1274,13 +1315,13 @@ class LockOperationError(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="lock_operation_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="operation_source", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="operation_error", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="fabric_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="source_node", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(6), source="credentials", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="lock_operation_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="operation_source", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="operation_error", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="source_node", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(6), source="credentials", optional=False),
     )
 
 class LockDataTypeEnum(enum.IntEnum):
@@ -1313,13 +1354,13 @@ class LockUserChange(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(0), source="lock_data_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="data_operation_type", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="operation_source", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="fabric_index", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="source_node", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(6), source="data_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="lock_data_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="data_operation_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="operation_source", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="user_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="fabric_index", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="source_node", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(6), source="data_index", optional=False),
     )
 
 
@@ -1345,15 +1386,15 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="SESSION_IDLE_INTERVAL", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="SESSION_ACTIVE_INTERVAL", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="SESSION_ACTIVE_THRESHOLD", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="DATA_MODEL_REVISION", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="INTERACTION_MODEL_REVISION", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(6), source="SPECIFICATION_VERSION", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(7), source="MAX_PATHS_PER_INVOKE", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(8), source="SUPPORTED_TRANSPORTS", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(9), source="MAX_TCP_MESSAGE_SIZE", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="SESSION_IDLE_INTERVAL", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="SESSION_ACTIVE_INTERVAL", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="SESSION_ACTIVE_THRESHOLD", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="DATA_MODEL_REVISION", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="INTERACTION_MODEL_REVISION", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(6), source="SPECIFICATION_VERSION", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(7), source="MAX_PATHS_PER_INVOKE", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(8), source="SUPPORTED_TRANSPORTS", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(9), source="MAX_TCP_MESSAGE_SIZE", optional=True),
       )
 
   @dataclasses.dataclass
@@ -1367,8 +1408,8 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="iterations", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="salt", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="iterations", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="salt", optional=True),
       )
 
   @dataclasses.dataclass
@@ -1385,11 +1426,11 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_random", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_session_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="passcode_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="has_pbkdf_parameters", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="initiator_session_params", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_random", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_session_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="passcode_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="has_pbkdf_parameters", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="initiator_session_params", optional=True),
       )
 
   @dataclasses.dataclass
@@ -1406,11 +1447,11 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_random", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_random", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_session_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="pbkdf_parameters", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="responder_session_params", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_random", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_random", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_session_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="pbkdf_parameters", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="responder_session_params", optional=True),
       )
 
   @dataclasses.dataclass
@@ -1423,7 +1464,7 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="p_a", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="p_a", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1437,8 +1478,8 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="p_b", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="c_b", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="p_b", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="c_b", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1451,7 +1492,7 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="c_a", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="c_a", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1470,13 +1511,13 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_random", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_session_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="destination_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="initiator_eph_pub_key", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="initiator_session_params", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(6), source="resumption_id", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(7), source="initiator_resume_mic", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_random", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_session_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="destination_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="initiator_eph_pub_key", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="initiator_session_params", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(6), source="resumption_id", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(7), source="initiator_resume_mic", optional=True),
       )
 
   @dataclasses.dataclass
@@ -1492,10 +1533,10 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="responder_noc", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_icac", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_eph_pub_key", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="initiator_eph_pub_key", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="responder_noc", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_icac", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_eph_pub_key", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="initiator_eph_pub_key", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1511,10 +1552,10 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="responder_noc", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_icac", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="signature", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="resumption_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="responder_noc", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_icac", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="signature", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="resumption_id", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1531,11 +1572,11 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="responder_random", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_session_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_eph_pub_key", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="encrypted2", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(5), source="responder_session_params", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="responder_random", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="responder_session_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_eph_pub_key", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="encrypted2", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(5), source="responder_session_params", optional=True),
       )
 
   @dataclasses.dataclass
@@ -1551,10 +1592,10 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_noc", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_icac", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="initiator_eph_pub_key", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="responder_eph_pub_key", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_noc", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_icac", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="initiator_eph_pub_key", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="responder_eph_pub_key", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1569,9 +1610,9 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_noc", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_icac", optional=True),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="signature", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="initiator_noc", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="initiator_icac", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="signature", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1584,7 +1625,7 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="encrypted3", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="encrypted3", optional=False),
       )
 
   @dataclasses.dataclass
@@ -1600,10 +1641,10 @@ class SecureChannelProtocol:
       order = "tag"
       extensible = False
       fields = (
-          tlv.Field(tag=tlv.ContextSpecificTag(1), source="resumption_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(2), source="sigma2_resume_mic", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_session_id", optional=False),
-          tlv.Field(tag=tlv.ContextSpecificTag(4), source="responder_session_params", optional=True),
+        tlv.Field(tag=tlv.ContextSpecificTag(1), source="resumption_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(2), source="sigma2_resume_mic", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(3), source="responder_session_id", optional=False),
+        tlv.Field(tag=tlv.ContextSpecificTag(4), source="responder_session_params", optional=True),
       )
 
 
@@ -1613,48 +1654,48 @@ class SignatureAlgorithmEnum(enum.IntEnum):
 @dataclasses.dataclass
 class DnAttribute(tlv.ChoiceOf):
   variant: str
-  value: typing.Union[int, str]
+  value: typing.Union[str, int]
 
   class Meta:
     options = (
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(1), name="common-name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(2), name="surname", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(3), name="serial-num", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(4), name="country-name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(5), name="locality-name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(6), name="state-or-province-name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(7), name="org-name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(8), name="org-unit-name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(9), name="title", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(10), name="name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(11), name="given-name", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(12), name="initials", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(13), name="gen-qualifier", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(14), name="dn-qualifier", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(15), name="pseudonym", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(16), name="domain-component", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(17), name="matter-node-id", type=int, annotation={'signed': False}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(18), name="matter-firmware-signing-id", type=int, annotation={'signed': False}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(19), name="matter-icac-id", type=int, annotation={'signed': False}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(20), name="matter-rcac-id", type=int, annotation={'signed': False}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(21), name="matter-fabric-id", type=int, annotation={'signed': False}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(22), name="matter-noc-cat", type=int, annotation={'signed': False}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(23), name="matter-vvs-id", type=int, annotation={'signed': False}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(129), name="common-name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(130), name="surname-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(131), name="serial-num-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(132), name="country-name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(133), name="locality-name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(134), name="state-or-province-name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(135), name="org-name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(136), name="org-unit-name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(137), name="title-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(138), name="name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(139), name="given-name-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(140), name="initials-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(141), name="gen-qualifier-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(142), name="dn-qualifier-ps", type=str, annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(143), name="pseudonym-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(1), name="common-name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(2), name="surname", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(3), name="serial-num", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(4), name="country-name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(5), name="locality-name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(6), name="state-or-province-name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(7), name="org-name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(8), name="org-unit-name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(9), name="title", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(10), name="name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(11), name="given-name", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(12), name="initials", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(13), name="gen-qualifier", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(14), name="dn-qualifier", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(15), name="pseudonym", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(16), name="domain-component", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(17), name="matter-node-id", type=int, annotation={'signed': False}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(18), name="matter-firmware-signing-id", type=int, annotation={'signed': False}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(19), name="matter-icac-id", type=int, annotation={'signed': False}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(20), name="matter-rcac-id", type=int, annotation={'signed': False}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(21), name="matter-fabric-id", type=int, annotation={'signed': False}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(22), name="matter-noc-cat", type=int, annotation={'signed': False}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(23), name="matter-vvs-id", type=int, annotation={'signed': False}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(129), name="common-name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(130), name="surname-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(131), name="serial-num-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(132), name="country-name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(133), name="locality-name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(134), name="state-or-province-name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(135), name="org-name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(136), name="org-unit-name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(137), name="title-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(138), name="name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(139), name="given-name-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(140), name="initials-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(141), name="gen-qualifier-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(142), name="dn-qualifier-ps", type=str, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(143), name="pseudonym-ps", type=str, annotation={}),
     )
 
 class PublicKeyAlgorithmEnum(enum.IntEnum):
@@ -1672,8 +1713,8 @@ class BasicConstraints(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="is_ca", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="path_len_constraint", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="is_ca", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="path_len_constraint", optional=True),
     )
 
 class KeyUsageFlagEnum(enum.IntEnum):
@@ -1690,16 +1731,16 @@ class KeyUsageFlagEnum(enum.IntEnum):
 @dataclasses.dataclass
 class Extension(tlv.ChoiceOf):
   variant: str
-  value: typing.Union[typing.ForwardRef("BasicConstraints"), int, bytes, typing.List[int]]
+  value: typing.Union[typing.ForwardRef("BasicConstraints"), typing.List[int], bytes, int]
 
   class Meta:
     options = (
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(1), name="basic-cnstr", type=typing.ForwardRef("BasicConstraints"), annotation={}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(2), name="key-usage", type=int, annotation={'signed': False, 'min': 0, 'max': 65535}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(3), name="extended-key-usage", type=typing.List[int], annotation={'is_list': False, 'base_meta': {'signed': False, 'min': 0, 'max': 255}, 'min_len': 1}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(4), name="subject-key-id", type=bytes, annotation={'min_len': 20, 'max_len': 20}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(5), name="authority-key-id", type=bytes, annotation={'min_len': 20, 'max_len': 20}),
-        tlv.ChoiceField(tag=tlv.ContextSpecificTag(6), name="future-extension", type=bytes, annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(1), name="basic-cnstr", type=typing.ForwardRef("BasicConstraints"), annotation={}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(2), name="key-usage", type=int, annotation={'signed': False, 'min': 0, 'max': 65535}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(3), name="extended-key-usage", type=typing.List[int], annotation={'is_list': False, 'base_meta': {'signed': False, 'min': 0, 'max': 255}, 'min_len': 1}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(4), name="subject-key-id", type=bytes, annotation={'min_len': 20, 'max_len': 20}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(5), name="authority-key-id", type=bytes, annotation={'min_len': 20, 'max_len': 20}),
+      tlv.ChoiceField(tag=tlv.ContextSpecificTag(6), name="future-extension", type=bytes, annotation={}),
     )
 
 @dataclasses.dataclass
@@ -1720,17 +1761,17 @@ class MatterCertificate(tlv.Structure):
     order = "tag"
     extensible = False
     fields = (
-        tlv.Field(tag=tlv.ContextSpecificTag(1), source="serial_num", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(2), source="sig_algo", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(3), source="issuer", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(4), source="not_before", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(5), source="not_after", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(6), source="subject", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(7), source="pub_key_algo", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(8), source="ec_curve_id", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(9), source="ec_pub_key", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(10), source="extensions", optional=False),
-        tlv.Field(tag=tlv.ContextSpecificTag(11), source="signature", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="serial_num", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="sig_algo", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="issuer", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="not_before", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="not_after", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(6), source="subject", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(7), source="pub_key_algo", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(8), source="ec_curve_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(9), source="ec_pub_key", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(10), source="extensions", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(11), source="signature", optional=False),
     )
 
 

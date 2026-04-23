@@ -25,6 +25,7 @@ class RootNode(endpoint.Endpoint):
         self.basic_information = BasicInformation(state)
         self.general_commissioning = GeneralCommissioning(state, layer)
         self.network_commissioning = NetworkCommissioning()
+        self.administrator_commissioning = AdministratorCommissioning(state, layer)
         self.operational_credentials = OperationalCredentials(state, layer, dns)
 
         self.add_server(self.access_control)
@@ -32,7 +33,7 @@ class RootNode(endpoint.Endpoint):
         self.add_server(self.general_commissioning)
         self.add_server(self.network_commissioning)
         # TODO: general diagnostics 0x0033
-        # TODO: administrator commissioning 0x003C
+        self.add_server(self.administrator_commissioning)
         self.add_server(self.operational_credentials)
         # TODO: group key management 0x003F
 
@@ -410,7 +411,13 @@ class GeneralCommissioning(cluster.Cluster):
         )
 
     @commissioning_complete.handler
-    def handle_commissioning_complete(self) -> protocol_messages.CommissioningCompleteResponse:
+    def handle_commissioning_complete(self, data: None, session: message.SessionContext) -> protocol_messages.CommissioningCompleteResponse:
+        if not session.local_fabric_index or not isinstance(session, message.SecureSessionContext) or session.session_type != message.SecureSessionType.CASE:
+            return protocol_messages.CommissioningCompleteResponse(
+                error_code=protocol_messages.CommissioningErrorEnum.InvalidAuthentication,
+                debug_text=""
+            )
+
         logger.info("Commissioning complete")
 
         self.device_state.in_commissioning_mode = False
@@ -467,6 +474,97 @@ class NetworkCommissioning(cluster.Cluster):
     @last_connect_error_value.reader
     def read_last_connect_error_value(self):
         return None
+
+
+class AdministratorCommissioning(cluster.Cluster):
+    cluster_id = 0x003C
+    cluster_revision_number = 1
+
+    window_status = cluster.Attribute(0x0000, cluster.RWAccess.Read, cluster.Privileges.View)
+    admin_fabric_index = cluster.Attribute(0x0001, cluster.RWAccess.Read, cluster.Privileges.View, x_nullable=True)
+    admin_vendor_id = cluster.Attribute(0x0002, cluster.RWAccess.Read, cluster.Privileges.View, x_nullable=True)
+
+    open_commissioning_window = cluster.Command(0x0000, None, cluster.Privileges.Administer, t_timed=True)
+    open_basic_commissioning_window = cluster.Command(0x0001, None, cluster.Privileges.Administer, t_timed=True)
+    revoke_commissioning_window = cluster.Command(0x0002, None, cluster.Privileges.Administer, t_timed=True)
+
+    def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer):
+        super().__init__()
+        self.device_state = device_state
+        self.message_layer = ml
+        self.enhanced_commissioning = False
+        self.basic_commissioning = False
+        self.current_admin_fabric_index = None
+        self.current_admin_vendor_id = None
+
+    @window_status.reader
+    def read_window_status(self):
+        if self.enhanced_commissioning:
+            return protocol_messages.CommissioningWindowStatusEnum.EnhancedWindowOpen
+        elif self.basic_commissioning:
+            return protocol_messages.CommissioningWindowStatusEnum.EnhancedWindowOpen
+        else:
+            return protocol_messages.CommissioningWindowStatusEnum.WindowNotOpen
+
+    @admin_fabric_index.reader
+    def read_admin_fabric_index(self):
+        return self.current_admin_fabric_index
+
+    @admin_vendor_id.reader
+    def read_admin_vendor_id(self):
+        return self.current_admin_vendor_id
+
+    @open_commissioning_window.handler
+    def handle_open_commissioning_window(self, data: protocol_messages.OpenCommissioningWindow, session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+        if self.device_state.in_commissioning_mode or self.enhanced_commissioning or self.basic_commissioning:
+            return protocol_messages.CommissioningWindowStatusCodeEnum.Busy
+
+        print(data)
+        asyncio.create_task(self.cancel_commissioning(data.commissioning_timeout))
+        self.enhanced_commissioning = True
+        self.device_state.in_commissioning_mode = True
+        self.current_admin_fabric_index = session.local_fabric_index
+        self.current_admin_vendor_id = self.device_state.fabrics[session.local_fabric_index].admin_vendor_id
+        self.increment_data_version()
+        self.attributes_changed([self.window_status, self.admin_fabric_index, self.admin_vendor_id])
+        return protocol_messages.CommissioningWindowStatusCodeEnum.Success
+
+    @open_basic_commissioning_window.handler
+    def handle_open_basic_commissioning_window(self, data: protocol_messages.OpenBasicCommissioningWindow, session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+        if self.device_state.in_commissioning_mode or self.enhanced_commissioning or self.basic_commissioning:
+            return protocol_messages.CommissioningWindowStatusCodeEnum.Busy
+
+        asyncio.create_task(self.cancel_commissioning(data.commissioning_timeout))
+        self.basic_commissioning = True
+        self.device_state.in_commissioning_mode = True
+        self.current_admin_fabric_index = session.local_fabric_index
+        self.current_admin_vendor_id = self.device_state.fabrics[session.local_fabric_index].admin_vendor_id
+        self.increment_data_version()
+        self.attributes_changed([self.window_status, self.admin_fabric_index, self.admin_vendor_id])
+        return protocol_messages.CommissioningWindowStatusCodeEnum.Success
+
+    @revoke_commissioning_window.handler
+    def handle_revoke_commissioning_window(self) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+        if not self.enhanced_commissioning and not self.basic_commissioning:
+            return protocol_messages.CommissioningWindowStatusCodeEnum.WindowNotOpen
+        asyncio.create_task(self.cancel_commissioning())
+        return protocol_messages.CommissioningWindowStatusCodeEnum.Success
+
+    async def cancel_commissioning(self, delay: typing.Optional[float] = None):
+        if delay is not None:
+            await asyncio.sleep(delay)
+
+        if not self.enhanced_commissioning and not self.basic_commissioning:
+            return
+
+        self.device_state.in_commissioning_mode = False
+        self.message_layer.secure_channel.pake_values_responder = self.message_layer.secure_channel.basic_pake_values_responder
+        self.basic_commissioning = False
+        self.enhanced_commissioning = False
+        self.current_admin_fabric_index = None
+        self.current_admin_vendor_id = None
+        self.increment_data_version()
+        self.attributes_changed([self.window_status, self.admin_fabric_index, self.admin_vendor_id])
 
 
 class OperationalCredentials(cluster.Cluster):

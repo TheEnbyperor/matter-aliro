@@ -693,7 +693,7 @@ class MessageLayer:
         to_remove = set()
         for sid, session in self.secure_unicast_session_context.items():
             if session.session_type == SecureSessionType.PASE:
-                self.close_secure_unicast_session(session)
+                asyncio.create_task(self.close_secure_unicast_session(session))
                 to_remove.add(sid)
         for sid in to_remove:
             self.secure_unicast_session_context.pop(sid)

@@ -581,7 +581,7 @@ def main():
             parse = schema.parse_file(f, parse_all=True)
         renderer.render(parse)
 
-    with open(source_dir / "matter" / "encoding" / "protocol_messages.py", "w") as f:
+    with open(source_dir / "matter_aliro" / "matter" / "encoding" / "protocol_messages.py", "w") as f:
         for l in renderer.out:
             f.write(f"{l}\n")
 
