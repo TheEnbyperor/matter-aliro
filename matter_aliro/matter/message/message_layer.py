@@ -6,7 +6,7 @@ import abc
 import typing
 import enum
 import dataclasses
-import threading
+import asyncio
 import cryptography.exceptions
 import cryptography.hazmat.primitives.ciphers.aead
 from .. import device, crypto
@@ -32,7 +32,7 @@ class NetworkChannel(metaclass=abc.ABCMeta):
     is_reliable: bool
 
     @abc.abstractmethod
-    def send_frame(self, frame: bytes) -> None:
+    async def send_frame(self, frame: bytes) -> None:
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -51,9 +51,10 @@ class UDPChannel(NetworkChannel):
         self.socket = sock
         self.peer_addr = peer_addr
 
-    def send_frame(self, frame: bytes) -> None:
+    async def send_frame(self, frame: bytes) -> None:
+        loop = asyncio.get_running_loop()
         try:
-            self.socket.sendto(frame, self.peer_addr)
+            await loop.sock_sendto(self.socket, frame, self.peer_addr)
         except OSError:
             pass
 
@@ -134,6 +135,7 @@ class MessageReceptionState:
             return False
 
 class SessionContext(metaclass=abc.ABCMeta):
+    peer: NetworkChannel
     local_fabric_index: int
     peer_node_id: int
     attestation_challenge: bytes
@@ -234,7 +236,7 @@ class ExchangeRetransmission:
     frame: bytes
     send_count: int
     retransmission_timeout_counter: int
-    timer: threading.Timer
+    timer: asyncio.Task
 
 
 @dataclasses.dataclass
@@ -251,7 +253,7 @@ class Exchange:
     ephemeral: bool
     retransmissions: typing.Dict[int, ExchangeRetransmission] = dataclasses.field(default_factory=dict)
     acknowledgement: typing.Optional[ExchangeAcknowledgement] = None
-    standalone_acknowledgement_timer: typing.Optional[threading.Timer] = None
+    standalone_acknowledgement_timer: typing.Optional[asyncio.Task] = None
     closing: bool = False
 
     def __hash__(self) -> int:
@@ -285,6 +287,7 @@ class MessageLayer:
         self.matter_udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.matter_udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.matter_udp_socket.bind(("", self.port))
+        self.matter_udp_socket.setblocking(False)
 
         self.global_unencrypted_message_counter = random.randint(1, 2 ** 28)
         self.unsecured_session_context = {}
@@ -293,25 +296,27 @@ class MessageLayer:
         self.in_use_session_ids = set()
         self.next_exchange_id = random.randint(0, 2 ** 16)
         self.protocols = {}
-        self.register_protocol_handler(secure_channel.SecureChannel(self, device_state))
+        self.secure_channel = secure_channel.SecureChannel(self, device_state)
+        self.register_protocol_handler(self.secure_channel)
 
     def register_protocol_handler(self, handler: protocol.Protocol):
         self.protocols[(handler.protocol_vendor_id, handler.protocol_id)] = handler
 
-    def process_matter_udp_packets(self):
+    async def process_matter_udp_packets(self):
+        loop = asyncio.get_event_loop()
         while True:
-            buf, addr = self.matter_udp_socket.recvfrom(9000)
+            buf, addr = await loop.sock_recvfrom(self.matter_udp_socket, 9000)
             try:
                 frame = messages.MatterFrame.decode_from_bytes(buf)
             except ValueError as e:
                 logger.warning(f"Failed to decode Matter frame: {e}")
                 continue
-            self.process_recv_matter_frame(
+            asyncio.create_task(self.process_recv_matter_frame(
                 frame, UDPChannel(self.matter_udp_socket, addr),
                 is_unreliable_transport=True
-            )
+            ))
 
-    def process_recv_matter_frame(
+    async def process_recv_matter_frame(
             self, frame: messages.MatterFrame, peer: NetworkChannel,
             is_unreliable_transport: bool = True
     ):
@@ -437,31 +442,28 @@ class MessageLayer:
             # Per § 4.12.5.2 - Standalone acknowledgement processing
             if message.reliability:
                 if is_duplicate:
-                    self.send_standalone_acknowledgement(exchange)
+                    await self.send_standalone_acknowledgement(exchange)
                     if exchange.ephemeral:
-                        self.close_exchange(exchange)
+                        await self.close_exchange(exchange)
                     return
                 else:
                     if exchange.acknowledgement and not exchange.acknowledgement.standalone_acknowledgement_sent:
                         if exchange.standalone_acknowledgement_timer:
                             exchange.standalone_acknowledgement_timer.cancel()
-                        self.send_standalone_acknowledgement(exchange)
+                        asyncio.create_task(self.send_standalone_acknowledgement(exchange))
                     exchange.acknowledgement = ExchangeAcknowledgement(
                         frame.message_counter, standalone_acknowledgement_sent=False
                     )
-                    exchange.standalone_acknowledgement_timer = threading.Timer(
-                        MRP_STANDALONE_ACK_TIMEOUT,
-                        self.send_standalone_acknowledgement,
-                        args=(exchange,)
+                    exchange.standalone_acknowledgement_timer = asyncio.create_task(
+                        self.send_standalone_acknowledgement(exchange, MRP_STANDALONE_ACK_TIMEOUT),
                     )
-                    exchange.standalone_acknowledgement_timer.start()
         else:
             exchange = self.find_exchange(message, session_context, is_duplicate)
             if not exchange:
                 return
 
         if exchange.closing:
-            self.close_exchange(exchange)
+            await self.close_exchange(exchange)
 
         if is_duplicate:
             return
@@ -473,14 +475,16 @@ class MessageLayer:
         if not exchange.ephemeral:
             k = (message.protocol_vendor_id, message.protocol_id)
             if h := self.protocols.get(k):
-                h.handle_message(exchange, message.protocol_opcode, message.payload)
+                asyncio.create_task(h.handle_message(exchange, message.protocol_opcode, message.payload))
 
-    def status_report(self, exchange: Exchange, report: messages.StatusReport):
+    async def status_report(self, exchange: Exchange, report: messages.StatusReport):
         k = (report.protocol_vendor_id, report.protocol_id)
         if h := self.protocols.get(k):
-            h.handle_status_report(exchange, report.general_code, report.protocol_code, report.protocol_data)
+            asyncio.create_task(h.handle_status_report(exchange, report.general_code, report.protocol_code, report.protocol_data))
 
-    def send_standalone_acknowledgement(self, exchange: "Exchange"):
+    async def send_standalone_acknowledgement(self, exchange: "Exchange", delay: typing.Optional[float] = None):
+        if delay is not None:
+            await asyncio.sleep(delay)
         if exchange.acknowledgement:
             message = messages.ProtocolMessage(
                 initiator=exchange.exchange_role == Role.Initiator,
@@ -493,12 +497,15 @@ class MessageLayer:
                 secured_message_extensions=None,
                 payload=b""
             )
-            self.send_with_session(message.encode_to_bytes(), exchange.context)
+            await self.send_with_session(message.encode_to_bytes(), exchange.context)
             exchange.acknowledgement.standalone_acknowledgement_sent = True
             exchange.standalone_acknowledgement_timer.cancel()
 
-    def send_message(self, exchange: "Exchange", protocol_vendor_id: int, protocol_id: int, protocol_opcode: int, payload: bytes, reliability: bool = False):
+    async def send_message(self, exchange: "Exchange", protocol_vendor_id: int, protocol_id: int, protocol_opcode: int, payload: bytes, reliability: bool = False):
+        logger.debug(f"{exchange} - send message: protocol=({protocol_vendor_id:04x}, {protocol_id:04x}), opcode={protocol_opcode:04x}, reliability={reliability}")
         if exchange.context.peer.is_reliable:
+            reliability = False
+        if exchange.context not in self.secure_unicast_session_context and exchange.context not in self.unsecured_session_context:
             reliability = False
         message = messages.ProtocolMessage(
             initiator=exchange.exchange_role == Role.Initiator,
@@ -513,16 +520,14 @@ class MessageLayer:
         )
         if exchange.acknowledgement:
             message.acknowledged_message_counter = exchange.acknowledgement.message_counter
-        message_counter, frame = self.send_with_session(message.encode_to_bytes(), exchange.context)
+        message_counter, frame = await self.send_with_session(message.encode_to_bytes(), exchange.context)
         exchange.acknowledgement = None
         if reliability:
-            t = threading.Timer(self.mrp_backoff_time(exchange.context, 0), self.retransmit, args=(exchange, message_counter,))
-            t.start()
             exchange.retransmissions[message_counter] = ExchangeRetransmission(
                 frame=frame,
                 send_count=1,
                 retransmission_timeout_counter=0,
-                timer=t
+                timer=asyncio.create_task(self.retransmit(exchange, message_counter, self.mrp_backoff_time(exchange.context, 0))),
             )
 
     def initiate_exchange(self, context: SessionContext) -> Exchange:
@@ -547,17 +552,18 @@ class MessageLayer:
             i = SESSION_ACTIVE_INTERVAL
         return i * MRP_BACKOFF_MARGIN * (MRP_BACKOFF_BASE ** max(0, send_count - MRP_BACKOFF_THRESHOLD)) * (1.0 + random.random() * MRP_BACKOFF_JITTER)
 
-    def retransmit(self, exchange: "Exchange", message_counter: int):
+    async def retransmit(self, exchange: "Exchange", message_counter: int, delay: typing.Optional[float] = None):
+        if delay is not None:
+            await asyncio.sleep(delay)
         if message_counter not in exchange.retransmissions:
             return
         retransmission = exchange.retransmissions[message_counter]
         retransmission.retransmission_timeout_counter += 1
-        exchange.context.peer.send_frame(retransmission.frame)
-        t = threading.Timer(self.mrp_backoff_time(exchange.context, retransmission.send_count), self.retransmit, args=(exchange, message_counter,))
-        t.start()
+        await exchange.context.peer.send_frame(retransmission.frame)
+        retransmission.timer = asyncio.create_task(self.retransmit(exchange, message_counter, self.mrp_backoff_time(exchange.context, retransmission.send_count)))
         retransmission.send_count += 1
 
-    def send_with_session(self, data: bytes, session_context: SessionContext) -> typing.Tuple[int, bytes]:
+    async def send_with_session(self, data: bytes, session_context: SessionContext) -> typing.Tuple[int, bytes]:
         if isinstance(session_context, UnsecuredSessionContext):
             frame = messages.MatterFrame(
                 version=0,
@@ -574,7 +580,7 @@ class MessageLayer:
             )
             self.global_unencrypted_message_counter = (self.global_unencrypted_message_counter + 1) % 2 ** 32
             d = frame.encode_to_bytes()
-            session_context.peer.send_frame(d)
+            await session_context.peer.send_frame(d)
             return frame.message_counter, d
 
         elif isinstance(session_context, SecureSessionContext):
@@ -613,7 +619,7 @@ class MessageLayer:
             enc = cipher.encrypt(nonce, data, authenticated_header)
             d = authenticated_header + enc
 
-            session_context.peer.send_frame(d)
+            await session_context.peer.send_frame(d)
             return frame.message_counter, d
 
         else:
@@ -657,10 +663,10 @@ class MessageLayer:
         else:
             return None
 
-    def close_exchange(self, exchange: Exchange):
+    async def close_exchange(self, exchange: Exchange):
         exchange.closing = True
         if exchange.acknowledgement and not exchange.acknowledgement.standalone_acknowledgement_sent:
-            self.send_standalone_acknowledgement(exchange)
+            await self.send_standalone_acknowledgement(exchange)
             exchange.acknowledgement = None
 
         if len(exchange.retransmissions):
@@ -668,6 +674,11 @@ class MessageLayer:
 
         if exchange in self.exchanges:
             self.exchanges.remove(exchange)
+
+    async def close_secure_unicast_session(self, context: SecureSessionContext):
+        exchange = self.initiate_exchange(context)
+        code = secure_channel.StatusCode.CLOSE_SESSION
+        await self.secure_channel.send_status_report(exchange, code.general_code(), code.value, reliability=False)
 
     def allocate_session_id(self):
         if len(self.in_use_session_ids) < 0xFFFF:
@@ -682,6 +693,7 @@ class MessageLayer:
         to_remove = set()
         for sid, session in self.secure_unicast_session_context.items():
             if session.session_type == SecureSessionType.PASE:
+                self.close_secure_unicast_session(session)
                 to_remove.add(sid)
         for sid in to_remove:
             self.secure_unicast_session_context.pop(sid)

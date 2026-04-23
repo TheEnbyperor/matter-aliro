@@ -20,7 +20,7 @@ class StepUpSuccess:
     access_elements: typing.Dict[str, typing.Any]
     revocation_elements: typing.Dict[str, typing.Any]
 
-def _mdl_envelope(
+async def _mdl_envelope(
         target: iso7816.Terminal,
         secure_channel: crypto.SecureChannel,
         req: typing.Optional[bytes] = None,
@@ -30,7 +30,7 @@ def _mdl_envelope(
         data=secure_channel.encrypt_command(req) if req else None,
         status=status,
     )
-    resp = target.response_chaining(iso7816.RequestAPDU(
+    resp = await target.response_chaining(iso7816.RequestAPDU(
         instruction_class=0x00,
         instruction=0xC3,
         p1=0x00, p2=0x00,
@@ -60,15 +60,15 @@ def _mdl_envelope(
     return resp_data, resp.status
 
 
-def _device_request(target: iso7816.Terminal, req: mdl_commands.DeviceRequest,
+async def _device_request(target: iso7816.Terminal, req: mdl_commands.DeviceRequest,
                     secure_channel: crypto.SecureChannel) -> mdl_commands.DeviceResponse:
-    resp, status = _mdl_envelope(target, secure_channel, req.encode())
+    resp, status = await _mdl_envelope(target, secure_channel, req.encode())
     if status:
         raise util.GeneralException("mDL device request failed")
     return mdl_commands.DeviceResponse.decode(resp)
 
 
-def run_step_up(
+async def run_step_up(
         target: iso7816.Terminal,
         trusted_issuer_keys: typing.List[util.PublicKey],
         step_up_sk: bytes,
@@ -114,25 +114,25 @@ def run_step_up(
             }
         ))
 
-    device_resp = _device_request(target, mdl_commands.DeviceRequest(
+    device_resp = await _device_request(target, mdl_commands.DeviceRequest(
         version="1.0",
         document_requests=document_types,
     ), step_up_secure_channel)
 
     if device_resp.version != "1.0":
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.GeneralException("mDL Version unsupported")
 
     access_document: typing.Optional[mdl_data_elements.Document] = next(filter(lambda d: d.document_type == "aliro-a", device_resp.documents), None)
     if not access_document:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.GeneralException("No access document presented")
 
     if access_document.issuer_auth.protected_headers.critical:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.GeneralException("Critical protected headers not supported")
     if access_document.issuer_auth.unprotected_headers.critical:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.GeneralException("Critical unprotected headers not supported")
 
     issuer = None
@@ -145,18 +145,18 @@ def run_step_up(
             break
 
     if not issuer:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         return None
 
     mso = mdl_data_elements.MobileSecurityObject.decode(access_document.issuer_auth.payload)
 
     if mso.document_type != access_document.document_type:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.GeneralException("Document type mis-match")
 
     now = datetime.datetime.now(datetime.UTC)
     if not mso.validity_info.valid_from <= now <= mso.validity_info.valid_to:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.GeneralException("Expired validity info")
 
     if mso.digest_algorithm == "SHA-256":
@@ -166,7 +166,7 @@ def run_step_up(
     elif mso.digest_algorithm == "SHA-512":
         hash_alg = hashlib.sha512
     else:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.GeneralException("Invalid digest algorithm")
 
     access_elements = {
@@ -180,7 +180,7 @@ def run_step_up(
 
             signed_digest = mso.value_digests.get(ns, {}).get(element.digest_id)
             if signed_digest != element_digest:
-                command_handlers.control_flow(target, 0x00, 0x00)
+                await command_handlers.control_flow(target, 0x00, 0x00)
                 raise util.CryptoException("Invalid element digest")
 
             if ns in access_elements:

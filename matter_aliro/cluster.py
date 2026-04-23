@@ -1,154 +1,154 @@
 import cryptography.hazmat.primitives.serialization
 import cryptography.hazmat.primitives.asymmetric.ec
-import aliro.ecp
-import aliro.util
-import matter.interaction_model
-import matter.encoding.tlv
-from matter.encoding import protocol_messages
+from .matter import interaction_model
+from .matter import message
+from .matter.encoding import tlv, protocol_messages
+from .aliro import ecp
+from .aliro import util as aliro_util
+from . import device
 import secrets
-import main
 
 
-class DoorLockStatusCode(matter.interaction_model.StatusCodeType):
+class DoorLockStatusCode(interaction_model.StatusCodeType):
     DUPLICATE = 0x02
     OCCUPIED = 0x03
 
 
-class DoorLockCluster(matter.interaction_model.Cluster):
+class DoorLockCluster(interaction_model.Cluster):
     cluster_id = 0x0101
     cluster_revision_number = 9
     features = [8, 13]  # USR, ALIRO
 
-    lock_state = matter.interaction_model.cluster.Attribute(
-        0x0000, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    lock_state = interaction_model.cluster.Attribute(
+        0x0000, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         p_reportable=True, x_nullable=True
     )
-    lock_type = matter.interaction_model.cluster.Attribute(
-        0x0001, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View
+    lock_type = interaction_model.cluster.Attribute(
+        0x0001, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View
     )
-    actuator_enabled = matter.interaction_model.cluster.Attribute(
-        0x0002, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View
+    actuator_enabled = interaction_model.cluster.Attribute(
+        0x0002, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View
     )
-    number_of_total_users_supported = matter.interaction_model.cluster.Attribute(
-        0x0011, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    number_of_total_users_supported = interaction_model.cluster.Attribute(
+        0x0011, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
-    credential_rules_support = matter.interaction_model.cluster.Attribute(
-        0x001B, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    credential_rules_support = interaction_model.cluster.Attribute(
+        0x001B, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
-    number_of_credentials_supported_per_user = matter.interaction_model.cluster.Attribute(
-        0x001C, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    number_of_credentials_supported_per_user = interaction_model.cluster.Attribute(
+        0x001C, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
-    operating_mode = matter.interaction_model.cluster.Attribute(
-        0x0025, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    operating_mode = interaction_model.cluster.Attribute(
+        0x0025, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         p_reportable=True
     )
-    supported_operating_modes = matter.interaction_model.cluster.Attribute(
-        0x0026, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    supported_operating_modes = interaction_model.cluster.Attribute(
+        0x0026, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
-    aliro_reader_verification_key = matter.interaction_model.cluster.Attribute(
-        0x0080, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.Administer,
+    aliro_reader_verification_key = interaction_model.cluster.Attribute(
+        0x0080, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.Administer,
         x_nullable=True
     )
-    aliro_reader_group_identifier = matter.interaction_model.cluster.Attribute(
-        0x0081, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.Administer,
+    aliro_reader_group_identifier = interaction_model.cluster.Attribute(
+        0x0081, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.Administer,
         x_nullable=True
     )
-    aliro_reader_group_sub_identifier = matter.interaction_model.cluster.Attribute(
-        0x0082, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.Administer,
+    aliro_reader_group_sub_identifier = interaction_model.cluster.Attribute(
+        0x0082, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.Administer,
         x_nullable=True
     )
-    aliro_expedited_transaction_supported_protocol_versions = matter.interaction_model.cluster.ListAttribute(
-        0x0083, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.Administer,
+    aliro_expedited_transaction_supported_protocol_versions = interaction_model.cluster.ListAttribute(
+        0x0083, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.Administer,
         f_fixed=True
     )
-    number_of_aliro_credential_issuer_keys_supported = matter.interaction_model.cluster.Attribute(
-        0x0087, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    number_of_aliro_credential_issuer_keys_supported = interaction_model.cluster.Attribute(
+        0x0087, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
-    number_of_aliro_endpoint_keys_supported = matter.interaction_model.cluster.Attribute(
-        0x0088, matter.interaction_model.cluster.RWAccess.Read,
-        matter.interaction_model.cluster.Privileges.View,
+    number_of_aliro_endpoint_keys_supported = interaction_model.cluster.Attribute(
+        0x0088, interaction_model.cluster.RWAccess.Read,
+        interaction_model.cluster.Privileges.View,
         f_fixed=True
     )
 
-    lock_door = matter.interaction_model.cluster.Command(
+    lock_door = interaction_model.cluster.Command(
         0x0000, None,
-        matter.interaction_model.cluster.Privileges.Operate, t_timed=True
+        interaction_model.cluster.Privileges.Operate, t_timed=True
     )
-    unlock_door = matter.interaction_model.cluster.Command(
+    unlock_door = interaction_model.cluster.Command(
         0x0001, None,
-        matter.interaction_model.cluster.Privileges.Operate, t_timed=True
+        interaction_model.cluster.Privileges.Operate, t_timed=True
     )
-    set_user = matter.interaction_model.cluster.Command(
+    set_user = interaction_model.cluster.Command(
         0x001A, None,
-        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
+        interaction_model.cluster.Privileges.Administer, t_timed=True
     )
-    get_user = matter.interaction_model.cluster.Command(
+    get_user = interaction_model.cluster.Command(
         0x001B, 0x001C,
-        matter.interaction_model.cluster.Privileges.Administer
+        interaction_model.cluster.Privileges.Administer
     )
-    clear_user = matter.interaction_model.cluster.Command(
+    clear_user = interaction_model.cluster.Command(
         0x001D, None,
-        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
+        interaction_model.cluster.Privileges.Administer, t_timed=True
     )
-    set_credential = matter.interaction_model.cluster.Command(
+    set_credential = interaction_model.cluster.Command(
         0x0022, 0x0023,
-        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
+        interaction_model.cluster.Privileges.Administer, t_timed=True
     )
-    get_credential_status = matter.interaction_model.cluster.Command(
+    get_credential_status = interaction_model.cluster.Command(
         0x0024, 0x0025,
-        matter.interaction_model.cluster.Privileges.Administer
+        interaction_model.cluster.Privileges.Administer
     )
-    clear_credential = matter.interaction_model.cluster.Command(
+    clear_credential = interaction_model.cluster.Command(
         0x0026, None,
-        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
+        interaction_model.cluster.Privileges.Administer, t_timed=True
     )
-    set_aliro_reader_config = matter.interaction_model.cluster.Command(
+    set_aliro_reader_config = interaction_model.cluster.Command(
         0x0028, None,
-        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
+        interaction_model.cluster.Privileges.Administer, t_timed=True
     )
-    clear_aliro_reader_config = matter.interaction_model.cluster.Command(
+    clear_aliro_reader_config = interaction_model.cluster.Command(
         0x0029, None,
-        matter.interaction_model.cluster.Privileges.Administer, t_timed=True
+        interaction_model.cluster.Privileges.Administer, t_timed=True
     )
 
-    door_lock_alarm = matter.interaction_model.cluster.Event(
-        0x0000, matter.interaction_model.cluster.EventPriority.INFO,
-        matter.interaction_model.cluster.Privileges.View
+    door_lock_alarm = interaction_model.cluster.Event(
+        0x0000, interaction_model.cluster.EventPriority.INFO,
+        interaction_model.cluster.Privileges.View
     )
-    lock_operation = matter.interaction_model.cluster.Event(
-        0x0002, matter.interaction_model.cluster.EventPriority.CRITICAL,
-        matter.interaction_model.cluster.Privileges.View
+    lock_operation = interaction_model.cluster.Event(
+        0x0002, interaction_model.cluster.EventPriority.CRITICAL,
+        interaction_model.cluster.Privileges.View
     )
-    lock_operation_error = matter.interaction_model.cluster.Event(
-        0x0003, matter.interaction_model.cluster.EventPriority.CRITICAL,
-        matter.interaction_model.cluster.Privileges.View
+    lock_operation_error = interaction_model.cluster.Event(
+        0x0003, interaction_model.cluster.EventPriority.CRITICAL,
+        interaction_model.cluster.Privileges.View
     )
-    lock_user_change = matter.interaction_model.cluster.Event(
-        0x0004, matter.interaction_model.cluster.EventPriority.INFO,
-        matter.interaction_model.cluster.Privileges.View
+    lock_user_change = interaction_model.cluster.Event(
+        0x0004, interaction_model.cluster.EventPriority.INFO,
+        interaction_model.cluster.Privileges.View
     )
 
-    def __init__(self, device: "main.DoorLockDevice"):
+    def __init__(self, d: "device.DoorLockDevice"):
         super().__init__()
-        self.device = device
+        self.device = d
 
     @lock_state.reader
     def read_lock_state(self):
@@ -219,7 +219,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
         return 65535
 
     @lock_door.handler
-    def handle_lock_door(self, _: None, session: matter.message.SessionContext):
+    def handle_lock_door(self, _: None, session: message.SessionContext):
         print("LOCK DOOR")
         self.device.locked = True
         self.device.save_state()
@@ -228,15 +228,15 @@ class DoorLockCluster(matter.interaction_model.Cluster):
         self.report_event(self.lock_operation, protocol_messages.LockOperation(
             lock_operation_type=protocol_messages.LockOperationTypeEnum.Lock.value,
             operation_source=protocol_messages.OperationSourceEnum.Remote.value,
-            user_index=matter.encoding.tlv.Null(),
+            user_index=tlv.Null(),
             fabric_index=session.local_fabric_index,
             source_node=session.peer_node_id,
-            credentials=matter.encoding.tlv.Null(),
+            credentials=tlv.Null(),
         ))
-        return matter.interaction_model.StatusCode.SUCCESS
+        return interaction_model.StatusCode.SUCCESS
 
     @unlock_door.handler
-    def handle_unlock_door(self, _: None, session: matter.message.SessionContext):
+    def handle_unlock_door(self, _: None, session: message.SessionContext):
         print("UNLOCK DOOR")
         self.device.locked = False
         self.device.save_state()
@@ -245,20 +245,20 @@ class DoorLockCluster(matter.interaction_model.Cluster):
         self.report_event(self.lock_operation, protocol_messages.LockOperation(
             lock_operation_type=protocol_messages.LockOperationTypeEnum.Unlock.value,
             operation_source=protocol_messages.OperationSourceEnum.Remote.value,
-            user_index=matter.encoding.tlv.Null(),
+            user_index=tlv.Null(),
             fabric_index=session.local_fabric_index,
             source_node=session.peer_node_id,
-            credentials=matter.encoding.tlv.Null(),
+            credentials=tlv.Null(),
         ))
-        return matter.interaction_model.StatusCode.SUCCESS
+        return interaction_model.StatusCode.SUCCESS
 
     @set_user.handler
-    def handle_set_user(self, req: protocol_messages.SetUserRequest, session: matter.message.SessionContext):
+    def handle_set_user(self, req: protocol_messages.SetUserRequest, session: message.SessionContext):
         if req.operation_type == protocol_messages.DataOperationTypeEnum.Add.value:
             if req.user_index in self.device.users:
                 return DoorLockStatusCode.OCCUPIED
 
-            self.device.users[req.user_index] = main.LockUser(
+            self.device.users[req.user_index] = device.LockUser(
                 name=req.user_name or "",
                 unique_id=req.user_unique_id or 0xFFFFFFFF,
                 user_status=protocol_messages.UserStatusEnum(
@@ -282,27 +282,27 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 data_index=req.user_index,
             ))
 
-            return matter.interaction_model.StatusCode.SUCCESS
+            return interaction_model.StatusCode.SUCCESS
 
         elif req.operation_type == protocol_messages.DataOperationTypeEnum.Modify.value:
             if req.user_index not in self.device.users:
-                return matter.interaction_model.StatusCode.INVALID_COMMAND
+                return interaction_model.StatusCode.INVALID_COMMAND
 
             user = self.device.users[req.user_index]
-            if req.user_name != matter.encoding.tlv.Null() and session.local_fabric_index != user.creator_fabric_index:
-                return matter.interaction_model.StatusCode.INVALID_COMMAND
-            if req.user_unique_id != matter.encoding.tlv.Null() and session.local_fabric_index != user.creator_fabric_index:
-                return matter.interaction_model.StatusCode.INVALID_COMMAND
+            if req.user_name != tlv.Null() and session.local_fabric_index != user.creator_fabric_index:
+                return interaction_model.StatusCode.INVALID_COMMAND
+            if req.user_unique_id != tlv.Null() and session.local_fabric_index != user.creator_fabric_index:
+                return interaction_model.StatusCode.INVALID_COMMAND
 
-            if req.user_name != matter.encoding.tlv.Null():
+            if req.user_name != tlv.Null():
                 user.name = req.user_name
-            if req.user_unique_id != matter.encoding.tlv.Null():
+            if req.user_unique_id != tlv.Null():
                 user.unique_id = req.user_unique_id
-            if req.user_status != matter.encoding.tlv.Null():
+            if req.user_status != tlv.Null():
                 user.user_status = protocol_messages.UserStatusEnum(req.user_status)
-            if req.user_type != matter.encoding.tlv.Null():
+            if req.user_type != tlv.Null():
                 user.user_type = protocol_messages.UserTypeEnum(req.user_type)
-            if req.credential_rule != matter.encoding.tlv.Null():
+            if req.credential_rule != tlv.Null():
                 user.credential_rule = protocol_messages.CredentialRuleEnum(req.credential_rule)
 
             user.last_modified_fabric_index = session.local_fabric_index
@@ -317,16 +317,16 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 data_index=req.user_index,
             ))
 
-            return matter.interaction_model.StatusCode.SUCCESS
+            return interaction_model.StatusCode.SUCCESS
 
         else:
-            return matter.interaction_model.StatusCode.INVALID_COMMAND
+            return interaction_model.StatusCode.INVALID_COMMAND
 
     @get_user.handler
     def handle_get_user(self, req: protocol_messages.GetUserRequest):
         next_occupied = [i for i in self.device.users.keys() if i > req.user_index]
         if len(next_occupied) == 0:
-            next_user_index = matter.encoding.tlv.Null()
+            next_user_index = tlv.Null()
         else:
             next_user_index = min(next_occupied)
 
@@ -358,18 +358,18 @@ class DoorLockCluster(matter.interaction_model.Cluster):
             return protocol_messages.GetUserResponse(
                 user_index=req.user_index,
                 user_status=protocol_messages.UserStatusEnum.Available.value,
-                user_name=matter.encoding.tlv.Null(),
-                user_unique_id=matter.encoding.tlv.Null(),
-                user_type=matter.encoding.tlv.Null(),
-                credential_rule=matter.encoding.tlv.Null(),
-                credentials=matter.encoding.tlv.Null(),
-                creator_fabric_index=matter.encoding.tlv.Null(),
-                last_modified_fabric_index=matter.encoding.tlv.Null(),
+                user_name=tlv.Null(),
+                user_unique_id=tlv.Null(),
+                user_type=tlv.Null(),
+                credential_rule=tlv.Null(),
+                credentials=tlv.Null(),
+                creator_fabric_index=tlv.Null(),
+                last_modified_fabric_index=tlv.Null(),
                 next_user_index=next_user_index,
             )
 
     @clear_user.handler
-    def handle_clear_user(self, req: protocol_messages.ClearUserRequest, session: matter.message.SessionContext):
+    def handle_clear_user(self, req: protocol_messages.ClearUserRequest, session: message.SessionContext):
         if req.user_index == 0xFFFE:
             self.device.users = {}
             self.device.credentials = {
@@ -387,7 +387,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 source_node=session.peer_node_id,
                 data_index=req.user_index,
             ))
-            return matter.interaction_model.StatusCode.SUCCESS
+            return interaction_model.StatusCode.SUCCESS
         elif req.user_index in self.device.users:
             del self.device.users[req.user_index]
             for ct in self.device.credentials.values():
@@ -407,9 +407,9 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 source_node=session.peer_node_id,
                 data_index=req.user_index,
             ))
-            return matter.interaction_model.StatusCode.SUCCESS
+            return interaction_model.StatusCode.SUCCESS
         else:
-            return matter.interaction_model.StatusCode.INVALID_COMMAND
+            return interaction_model.StatusCode.INVALID_COMMAND
 
     @staticmethod
     def credential_type_to_data_type(
@@ -435,39 +435,39 @@ class DoorLockCluster(matter.interaction_model.Cluster):
 
     @set_credential.handler
     def handle_set_credential(self, req: protocol_messages.SetCredentialRequest,
-                              session: matter.message.SessionContext):
+                              session: message.SessionContext):
         credential_type = protocol_messages.CredentialTypeEnum(req.credential.credential_type)
         if credential_type not in self.device.credentials:
             return protocol_messages.SetCredentialResponse(
-                status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                user_index=matter.encoding.tlv.Null(),
-                next_credential_index=matter.encoding.tlv.Null(),
+                status=interaction_model.StatusCode.INVALID_COMMAND,
+                user_index=tlv.Null(),
+                next_credential_index=tlv.Null(),
             )
 
         credentials = self.device.credentials[credential_type]
 
         next_occupied = [i for i in credentials.keys() if i > req.credential.credential_type]
         if len(next_occupied) == 0:
-            next_credential_index = matter.encoding.tlv.Null()
+            next_credential_index = tlv.Null()
         else:
             next_credential_index = min(next_occupied)
 
-        if req.operation_type == protocol_messages.DataOperationTypeEnum.Add and req.user_index == matter.encoding.tlv.Null():
+        if req.operation_type == protocol_messages.DataOperationTypeEnum.Add and req.user_index == tlv.Null():
             if req.credential.credential_index in credentials:
                 return protocol_messages.SetCredentialResponse(
                     status=DoorLockStatusCode.OCCUPIED,
-                    user_index=matter.encoding.tlv.Null(),
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
             if len(req.credential_data) != 65:
                 return protocol_messages.SetCredentialResponse(
-                    status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                    user_index=matter.encoding.tlv.Null(),
+                    status=interaction_model.StatusCode.INVALID_COMMAND,
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
 
             next_user_index = next(i for i in range(1, 65535) if i not in self.device.users)
-            self.device.users[next_user_index] = main.LockUser(
+            self.device.users[next_user_index] = device.LockUser(
                 name="",
                 unique_id=0xFFFFFFFF,
                 user_status=protocol_messages.UserStatusEnum(
@@ -482,14 +482,14 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 cryptography.hazmat.primitives.asymmetric.ec.SECP256R1(),
                 req.credential_data
             )
-            credentials[req.credential.credential_index] = main.LockCredential(
+            credentials[req.credential.credential_index] = device.LockCredential(
                 user_index=next_user_index,
                 data=key,
                 creator_fabric_index=session.local_fabric_index,
                 last_modified_fabric_index=session.local_fabric_index,
-                aliro_discriminator=aliro.util.aliro_key_identifier(key) \
+                aliro_discriminator=aliro_util.aliro_key_identifier(key) \
                     if req.credential.credential_type == protocol_messages.CredentialTypeEnum.AliroCredentialIssuerKey else \
-                    aliro.util.aliro_key_slot(key),
+                    aliro_util.aliro_key_slot(key),
                 persistent_key=None,
             )
             self.device.save_state()
@@ -503,30 +503,30 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 data_index=req.credential.credential_index,
             ))
             return protocol_messages.SetCredentialResponse(
-                status=matter.interaction_model.StatusCode.INVALID_COMMAND,
+                status=interaction_model.StatusCode.INVALID_COMMAND,
                 user_index=next_user_index,
                 next_credential_index=next_credential_index,
             )
 
-        elif req.operation_type == protocol_messages.DataOperationTypeEnum.Add and req.user_index != matter.encoding.tlv.Null():
+        elif req.operation_type == protocol_messages.DataOperationTypeEnum.Add and req.user_index != tlv.Null():
             if req.credential.credential_index in credentials:
                 return protocol_messages.SetCredentialResponse(
                     status=DoorLockStatusCode.OCCUPIED,
-                    user_index=matter.encoding.tlv.Null(),
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
 
             if req.user_index not in self.device.users:
                 return protocol_messages.SetCredentialResponse(
-                    status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                    user_index=matter.encoding.tlv.Null(),
+                    status=interaction_model.StatusCode.INVALID_COMMAND,
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
 
             if len(req.credential_data) != 65:
                 return protocol_messages.SetCredentialResponse(
-                    status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                    user_index=matter.encoding.tlv.Null(),
+                    status=interaction_model.StatusCode.INVALID_COMMAND,
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
 
@@ -534,8 +534,8 @@ class DoorLockCluster(matter.interaction_model.Cluster):
 
             if user.creator_fabric_index != session.local_fabric_index:
                 return protocol_messages.SetCredentialResponse(
-                    status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                    user_index=matter.encoding.tlv.Null(),
+                    status=interaction_model.StatusCode.INVALID_COMMAND,
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
 
@@ -543,14 +543,14 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 cryptography.hazmat.primitives.asymmetric.ec.SECP256R1(),
                 req.credential_data
             )
-            credentials[req.credential.credential_index] = main.LockCredential(
+            credentials[req.credential.credential_index] = device.LockCredential(
                 user_index=req.user_index,
                 data=key,
                 creator_fabric_index=session.local_fabric_index,
                 last_modified_fabric_index=session.local_fabric_index,
-                aliro_discriminator=aliro.util.aliro_key_identifier(key) \
+                aliro_discriminator=aliro_util.aliro_key_identifier(key) \
                     if req.credential.credential_type == protocol_messages.CredentialTypeEnum.AliroCredentialIssuerKey else \
-                    aliro.util.aliro_key_slot(key),
+                    aliro_util.aliro_key_slot(key),
                 persistent_key=None,
             )
             self.device.save_state()
@@ -564,38 +564,38 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 data_index=req.credential.credential_index,
             ))
             return protocol_messages.SetCredentialResponse(
-                status=matter.interaction_model.StatusCode.SUCCESS,
-                user_index=matter.encoding.tlv.Null(),
+                status=interaction_model.StatusCode.SUCCESS,
+                user_index=tlv.Null(),
                 next_credential_index=next_credential_index,
             )
 
-        elif req.operation_type == protocol_messages.DataOperationTypeEnum.Modify and req.user_index == matter.encoding.tlv.Null():
+        elif req.operation_type == protocol_messages.DataOperationTypeEnum.Modify and req.user_index == tlv.Null():
             return protocol_messages.SetCredentialResponse(
-                status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                user_index=matter.encoding.tlv.Null(),
+                status=interaction_model.StatusCode.INVALID_COMMAND,
+                user_index=tlv.Null(),
                 next_credential_index=next_credential_index,
             )
 
-        elif req.operation_type == protocol_messages.DataOperationTypeEnum.Modify and req.user_index != matter.encoding.tlv.Null():
+        elif req.operation_type == protocol_messages.DataOperationTypeEnum.Modify and req.user_index != tlv.Null():
             if req.credential.credential_index not in credentials:
                 return protocol_messages.SetCredentialResponse(
-                    status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                    user_index=matter.encoding.tlv.Null(),
+                    status=interaction_model.StatusCode.INVALID_COMMAND,
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
 
             credential = credentials[req.credential.credential_index]
             if credential.user_index != req.user_index:
                 return protocol_messages.SetCredentialResponse(
-                    status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                    user_index=matter.encoding.tlv.Null(),
+                    status=interaction_model.StatusCode.INVALID_COMMAND,
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index
                 )
 
             if credential.creator_fabric_index != session.local_fabric_index:
                 return protocol_messages.SetCredentialResponse(
-                    status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                    user_index=matter.encoding.tlv.Null(),
+                    status=interaction_model.StatusCode.INVALID_COMMAND,
+                    user_index=tlv.Null(),
                     next_credential_index=next_credential_index,
                 )
 
@@ -611,27 +611,27 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 data_index=req.credential.credential_index,
             ))
             return protocol_messages.SetCredentialResponse(
-                status=matter.interaction_model.StatusCode.SUCCESS,
-                user_index=matter.encoding.tlv.Null(),
+                status=interaction_model.StatusCode.SUCCESS,
+                user_index=tlv.Null(),
                 next_credential_index=next_credential_index,
             )
         else:
             return protocol_messages.SetCredentialResponse(
-                status=matter.interaction_model.StatusCode.INVALID_COMMAND,
-                user_index=matter.encoding.tlv.Null(),
-                next_credential_index=matter.encoding.tlv.Null(),
+                status=interaction_model.StatusCode.INVALID_COMMAND,
+                user_index=tlv.Null(),
+                next_credential_index=tlv.Null(),
             )
 
     @get_credential_status.handler
     def handle_get_credential_status(self, req: protocol_messages.GetCredentialStatusRequest):
         credential_type = protocol_messages.CredentialTypeEnum(req.credential.credential_type)
         if credential_type not in self.device.credentials:
-            return matter.interaction_model.StatusCode.INVALID_COMMAND
+            return interaction_model.StatusCode.INVALID_COMMAND
 
         credentials = self.device.credentials[credential_type]
         next_occupied = [i for i in credentials.keys() if i > req.credential.credential_index]
         if len(next_occupied) == 0:
-            next_credential_index = matter.encoding.tlv.Null()
+            next_credential_index = tlv.Null()
         else:
             next_credential_index = min(next_occupied)
 
@@ -651,17 +651,17 @@ class DoorLockCluster(matter.interaction_model.Cluster):
         else:
             return protocol_messages.GetCredentialStatusResponse(
                 credential_exists=False,
-                user_index=matter.encoding.tlv.Null(),
-                creator_fabric_index=matter.encoding.tlv.Null(),
-                last_modified_fabric_index=matter.encoding.tlv.Null(),
+                user_index=tlv.Null(),
+                creator_fabric_index=tlv.Null(),
+                last_modified_fabric_index=tlv.Null(),
                 next_credential_index=next_credential_index,
-                credential_data=matter.encoding.tlv.Null(),
+                credential_data=tlv.Null(),
             )
 
     @clear_credential.handler
     def handle_clear_credential(self, req: protocol_messages.ClearCredentialRequest,
-                                session: matter.message.SessionContext):
-        if req.credential == matter.encoding.tlv.Null():
+                                session: message.SessionContext):
+        if req.credential == tlv.Null():
             self.device.credentials = {
                 protocol_messages.CredentialTypeEnum.AliroCredentialIssuerKey: {},
                 protocol_messages.CredentialTypeEnum.AliroEvictableEndpointKey: {},
@@ -682,12 +682,12 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                     source_node=session.peer_node_id,
                     data_index=0xFFFE,
                 ))
-            return matter.interaction_model.StatusCode.SUCCESS
+            return interaction_model.StatusCode.SUCCESS
         else:
             credential_type = protocol_messages.CredentialTypeEnum(req.credential.credential_type)
             if req.credential.credential_index == 0xFFFE:
                 if credential_type not in self.device.credentials:
-                    return matter.interaction_model.StatusCode.INVALID_COMMAND
+                    return interaction_model.StatusCode.INVALID_COMMAND
                 self.device.credentials[credential_type] = {}
                 self.device.save_state()
                 self.report_event(self.lock_user_change, protocol_messages.LockUserChange(
@@ -701,7 +701,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                 ))
             else:
                 if req.credential.credential_index not in self.device.credentials[credential_type]:
-                    return matter.interaction_model.StatusCode.INVALID_COMMAND
+                    return interaction_model.StatusCode.INVALID_COMMAND
                 c = self.device.credentials[credential_type][req.credential.credential_index]
                 del self.device.credentials[credential_type][req.credential.credential_index]
                 self.device.save_state()
@@ -714,21 +714,21 @@ class DoorLockCluster(matter.interaction_model.Cluster):
                     source_node=session.peer_node_id,
                     data_index=req.credential.credential_index,
                 ))
-            return matter.interaction_model.StatusCode.SUCCESS
+            return interaction_model.StatusCode.SUCCESS
 
     @set_aliro_reader_config.handler
     def handle_set_aliro_reader_config(self, req: protocol_messages.SetAliroReaderConfigRequest):
         if self.device.aliro_reader_config:
-            return matter.interaction_model.StatusCode.INVALID_IN_STATE
+            return interaction_model.StatusCode.INVALID_IN_STATE
 
-        self.device.aliro_reader_config = main.AliroReaderConfig(
+        self.device.aliro_reader_config = device.AliroReaderConfig(
             signing_key=cryptography.hazmat.primitives.asymmetric.ec.derive_private_key(
                 int.from_bytes(req.signing_key, "big"),
                 cryptography.hazmat.primitives.asymmetric.ec.SECP256R1(),
             ),
             group_identifier=req.group_identifier,
             sub_group_identifier=secrets.token_bytes(16),
-            ecp_broadcast=aliro.ecp.ECPv2.aliro(req.group_identifier).encode()
+            ecp_broadcast=ecp.ECPv2.aliro(req.group_identifier).encode()
         )
         self.device.save_state()
         self.increment_data_version()
@@ -736,7 +736,7 @@ class DoorLockCluster(matter.interaction_model.Cluster):
             self.aliro_reader_verification_key,
             self.aliro_reader_group_identifier,
         ])
-        return matter.interaction_model.StatusCode.SUCCESS
+        return interaction_model.StatusCode.SUCCESS
 
     @clear_aliro_reader_config.handler
     def handle_clear_aliro_reader_config(self):
@@ -747,4 +747,4 @@ class DoorLockCluster(matter.interaction_model.Cluster):
             self.aliro_reader_verification_key,
             self.aliro_reader_group_identifier,
         ])
-        return matter.interaction_model.StatusCode.SUCCESS
+        return interaction_model.StatusCode.SUCCESS

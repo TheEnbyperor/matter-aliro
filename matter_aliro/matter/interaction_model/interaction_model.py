@@ -1,3 +1,4 @@
+import asyncio
 import collections
 import dataclasses
 import enum
@@ -80,7 +81,7 @@ class Subscription:
     max_interval_secs: int
     last_report: float
     attributes: typing.Dict[AttributeKey, cluster.Attribute]
-    timer: threading.Timer
+    timer: asyncio.Task
     interaction_model: "InteractionModel"
 
     def __init__(
@@ -100,11 +101,7 @@ class Subscription:
         self.attributes: typing.Dict[AttributeKey, typing.Tuple[cluster.Cluster, cluster.Attribute]] = {}
         self.changed_attributes: typing.Set[AttributeKey] = set()
         self.events: typing.Dict[EventKey, typing.Tuple[bool, typing.List[Event]]] = {}
-        self.timer = threading.Timer(
-            max(min_interval_secs, max_interval_secs // 2),
-            self.report
-        )
-        self.timer.start()
+        self.timer = asyncio.create_task(self.report(max(min_interval_secs, max_interval_secs // 2)))
         self.last_report = time.time()
         self.pending_report = False
 
@@ -117,13 +114,15 @@ class Subscription:
     def attribute_changed(self, ak: AttributeKey):
         self.changed_attributes.add(ak)
 
-    def new_event(self, event: Event):
+    async def new_event(self, event: Event):
         is_urgent, ev = self.events[event.key]
         ev.append(event)
         if is_urgent:
-            self.report_now()
+            await self.report_now()
 
-    def report(self):
+    async def report(self, delay: typing.Optional[float] = None):
+        if delay is not None:
+            await asyncio.sleep(delay)
         exchange = self.interaction_model.message_layer.initiate_exchange(self.session)
         attribute_reports = []
         event_reports = []
@@ -175,34 +174,26 @@ class Subscription:
             events.clear()
 
         expects_response = attribute_reports or event_reports
-        self.interaction_model.chunk_report_data(
+        await self.interaction_model.chunk_report_data(
             exchange, attribute_reports, event_reports,
             subscription_id=self.id, suppress_response=not expects_response,
         )
         if expects_response:
             self.interaction_model.pending_subscription_reports[exchange] = self.id
 
-        self.timer = threading.Timer(
-            max(self.min_interval_secs, self.max_interval_secs - 5),
-            self.report
-        )
-        self.timer.start()
+        self.timer = asyncio.create_task(self.report(max(self.min_interval_secs, self.max_interval_secs - 5)))
         self.last_report = time.time()
         self.pending_report = False
 
-    def report_now(self):
+    async def report_now(self):
         if not self.pending_report:
             self.timer.cancel()
             seconds_since_last_report = time.time() - self.last_report
             if seconds_since_last_report < self.min_interval_secs:
                 self.pending_report = True
-                self.timer = threading.Timer(
-                    self.min_interval_secs - seconds_since_last_report,
-                    self.report
-                )
-                self.timer.start()
+                self.timer = asyncio.create_task(self.report(self.min_interval_secs - seconds_since_last_report))
             else:
-                self.report()
+                await self.report()
 
 
 class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
@@ -246,7 +237,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             if to_notify:
                 for ak in to_notify:
                     sub.attribute_changed(ak)
-                sub.report_now()
+                asyncio.create_task(sub.report_now())
 
     def report_event(self, ek: EventKey, priority: cluster.EventPriority, data: typing.Any):
         event = Event(
@@ -261,7 +252,16 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
         self._state.save_state()
         for sub in self._subscriptions.values():
             if ek in sub.events:
-                sub.new_event(event)
+                asyncio.create_task(sub.new_event(event))
+
+    def cancel_subscriptions_for_fabric(self, fabric_index: int):
+        to_remove = set()
+        for sid, sub in self._subscriptions.items():
+            if sub.subscriber.local_fabric_index == fabric_index:
+                sub.timer.cancel()
+                to_remove.add(sid)
+        for sid in to_remove:
+            del self._subscriptions[sid]
 
     def allocate_subscription_id(self):
         for sid in range(1, 0x100000000):
@@ -270,7 +270,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
 
         return None
 
-    def handle_message(self, exchange: message_layer.Exchange, opcode: int, message: bytes):
+    async def handle_message(self, exchange: message_layer.Exchange, opcode: int, message: bytes):
         isd = acl.ISD(
             authentication_mode=acl.AuthenticationMode.NoAuth,
             is_commissioning=False,
@@ -296,56 +296,56 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 msg = self.StatusResponseMessage.decode_from_bytes(message)
             except ValueError as e:
                 logger.warning(f"invalid payload on status response: {e}")
-                self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
+                await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.status_response(exchange, msg)
+            await self.status_response(exchange, msg)
         elif opcode == self.OPCODE_READ_REQUEST:
             try:
                 msg = self.ReadRequestMessage.decode_from_bytes(message)
             except ValueError as e:
                 logger.warning(f"invalid payload on read request: {e}")
-                self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
+                await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.read_request(exchange, msg, isd)
+            await self.read_request(exchange, msg, isd)
         elif opcode == self.OPCODE_SUBSCRIBE_REQUEST:
             try:
                 msg = self.SubscribeRequestMessage.decode_from_bytes(message)
             except ValueError as e:
                 logger.warning(f"invalid payload on subscribe request: {e}")
-                self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
+                await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.subscribe_request(exchange, msg, isd)
+            await self.subscribe_request(exchange, msg, isd)
         elif opcode == self.OPCODE_WRITE_REQUEST:
-            self.release_next_message(exchange)
+            await self.release_next_message(exchange)
             try:
                 msg = self.WriteRequestMessage.decode_from_bytes(message)
             except ValueError as e:
                 logger.warning(f"invalid payload on write request: {e}")
-                self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
+                await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.write_request(exchange, msg, isd)
+            await self.write_request(exchange, msg, isd)
         elif opcode == self.OPCODE_INVOKE_REQUEST:
-            self.release_next_message(exchange)
+            await self.release_next_message(exchange)
             try:
                 msg = self.InvokeRequestMessage.decode_from_bytes(message)
             except ValueError as e:
                 logger.warning(f"invalid payload on invoke request: {e}")
-                self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
+                await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.invoke_request(exchange, msg, isd)
+            await self.invoke_request(exchange, msg, isd)
         elif opcode == self.OPCODE_TIMED_REQUEST:
             try:
                 msg = self.TimedRequestMessage.decode_from_bytes(message)
             except ValueError as e:
                 logger.warning(f"invalid payload on invoke request: {e}")
-                self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
+                await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
-            self.timed_request(exchange, msg)
+            await self.timed_request(exchange, msg)
         else:
-            self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
+            await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
             logger.warning(f"unknown opcode {opcode:02X}")
 
-    def handle_status_report(
+    async def handle_status_report(
             self,
             exchange: message_layer.Exchange,
             general_code: messages.GeneralCode,
@@ -354,7 +354,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     ):
         logger.debug(f"{exchange} - status report: {general_code.name} code={protocol_code}")
 
-    def status_response(
+    async def status_response(
             self,
             exchange: message_layer.Exchange,
             message: protocol_messages.ImProtocol.StatusResponseMessage
@@ -363,16 +363,16 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
 
         if message.status == StatusCode.SUCCESS.value:
             if exchange in self.pending_subscription_reports:
-                self._message_layer.close_exchange(exchange)
+                await self._message_layer.close_exchange(exchange)
             else:
-                self.release_next_message(exchange)
+                await self.release_next_message(exchange)
         else:
             if message.status == StatusCode.INVALID_SUBSCRIPTION.value:
                 if sid := self.pending_subscription_reports.pop(exchange, None):
                     if sub := self._subscriptions.pop(sid, None):
                         sub.timer.cancel()
 
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
 
     @staticmethod
     def decompress_paths(paths: typing.Iterable[protocol_messages.ImProtocol.AttributePathIB]) -> typing.Generator[
@@ -409,7 +409,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
 
                 yield path.node, path.endpoint, path.cluster, path.attribute, path.list_index
 
-    def chunk_report_data(
+    async def chunk_report_data(
             self,
             exchange: message_layer.Exchange,
             attribute_reports: typing.List[protocol_messages.ImProtocol.AttributeReportIB],
@@ -460,9 +460,9 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             ))
 
         for message in messages_out:
-            self.send_message(exchange, self.OPCODE_REPORT_DATA, message)
+            await self.send_message(exchange, self.OPCODE_REPORT_DATA, message)
 
-    def read_request(
+    async def read_request(
             self,
             exchange: message_layer.Exchange,
             message: protocol_messages.ImProtocol.ReadRequestMessage,
@@ -482,7 +482,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                         attribute_status=None
                     ))
                 elif isinstance(resp, self.AttributeStatusIB):
-                    print(f"{exchange} - failed to read attribute: {resp.status.status} ({attr_desc})")
+                    logger.warning(f"{exchange} - failed to read attribute: {resp.status.status} ({attr_desc})")
                     attribute_reports.append(self.AttributeReportIB(
                         attribute_data=None,
                         attribute_status=resp
@@ -497,16 +497,16 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                         event_status=None
                     ))
                 elif isinstance(resp, self.EventStatusIB):
-                    print(f"{exchange} - failed to read event: {resp.status.status} ({event_desc})")
+                    logger.warning(f"{exchange} - failed to read event: {resp.status.status} ({event_desc})")
                     event_reports.append(self.EventReportIB(
                         event_data=None,
                         event_status=resp
                     ))
 
-        self.chunk_report_data(exchange, attribute_reports, event_reports)
-        self._message_layer.close_exchange(exchange)
+        await self.chunk_report_data(exchange, attribute_reports, event_reports)
+        await self._message_layer.close_exchange(exchange)
 
-    def subscribe_request(
+    async def subscribe_request(
             self,
             exchange: message_layer.Exchange,
             message: protocol_messages.ImProtocol.SubscribeRequestMessage,
@@ -573,27 +573,27 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
         else:
             subscription = None
 
-        self.chunk_report_data(
+        await self.chunk_report_data(
             exchange, attribute_reports, event_reports,
             subscription_id=subscription.id if subscription else None,
             suppress_response=False
         )
         if subscription:
-            self.send_message(exchange, self.OPCODE_SUBSCRIBE_RESPONSE, self.SubscribeResponseMessage(
+            await self.send_message(exchange, self.OPCODE_SUBSCRIBE_RESPONSE, self.SubscribeResponseMessage(
                 subscription_id=subscription.id,
                 max_interval=subscription.max_interval_secs,
                 interaction_model_revision=INTERACTION_MODEL_REVISION,
             ))
         else:
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
 
-    def write_request(
+    async def write_request(
             self,
             exchange: message_layer.Exchange,
             message: protocol_messages.ImProtocol.WriteRequestMessage,
             isd: acl.ISD,
     ):
-        if not self.handle_timed_interaction(exchange, message):
+        if not await self.handle_timed_interaction(exchange, message):
             return
 
         if message.more_chunked_messages:
@@ -628,16 +628,16 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 write_responses=attribute_reports,
                 interaction_model_revision=INTERACTION_MODEL_REVISION,
             )
-            self.send_message(exchange, self.OPCODE_WRITE_RESPONSE, response)
-        self._message_layer.close_exchange(exchange)
+            await self.send_message(exchange, self.OPCODE_WRITE_RESPONSE, response)
+        await self._message_layer.close_exchange(exchange)
 
-    def invoke_request(
+    async def invoke_request(
             self,
             exchange: message_layer.Exchange,
             message: protocol_messages.ImProtocol.InvokeRequestMessage,
             isd: acl.ISD,
     ):
-        if not self.handle_timed_interaction(exchange, message):
+        if not await self.handle_timed_interaction(exchange, message):
             return
 
         responses = []
@@ -649,6 +649,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                     path.command_fields, exchange.context, isd, message.timed_request
             ):
                 if isinstance(resp, self.CommandDataIB):
+                    logger.debug(f"{exchange} - invoke response: {resp} ({invoke_desc})")
                     resp.command_ref = path.command_ref
                     responses.append(self.InvokeResponseIB(
                         command=resp,
@@ -669,16 +670,16 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 suppress_response=True,
                 interaction_model_revision=INTERACTION_MODEL_REVISION,
             )
-            self.send_message(exchange, self.OPCODE_INVOKE_RESPONSE, response)
-        self._message_layer.close_exchange(exchange)
+            await self.send_message(exchange, self.OPCODE_INVOKE_RESPONSE, response)
+        await self._message_layer.close_exchange(exchange)
 
-    def timed_request(
+    async def timed_request(
             self,
             exchange: message_layer.Exchange,
             message: protocol_messages.ImProtocol.TimedRequestMessage
     ):
         if exchange in self._timed_requests or exchange in self._expired_timeouts:
-            self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
+            await self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
                 status=StatusCode.TIMED_REQUEST_MISMATCH,
                 interaction_model_revision=INTERACTION_MODEL_REVISION,
             ))
@@ -690,12 +691,12 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
         t = threading.Timer(message.timeout / 1000, cancel)
         self._timed_requests[exchange] = t
         t.start()
-        self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
+        await self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
             status=StatusCode.SUCCESS,
             interaction_model_revision=INTERACTION_MODEL_REVISION,
         ))
 
-    def handle_timed_interaction(
+    async def handle_timed_interaction(
             self,
             exchange: message_layer.Exchange,
             message: typing.Union[
@@ -703,7 +704,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     ):
         if message.timed_request:
             if exchange in self._expired_timeouts:
-                self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
+                await self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
                     status=StatusCode.TIMEOUT,
                     interaction_model_revision=INTERACTION_MODEL_REVISION,
                 ))
@@ -713,14 +714,14 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 del self._timed_requests[exchange]
                 return True
             else:
-                self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
+                await self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
                     status=StatusCode.TIMED_REQUEST_MISMATCH,
                     interaction_model_revision=INTERACTION_MODEL_REVISION,
                 ))
                 return False
         else:
             if exchange in self._expired_timeouts or exchange in self._timed_requests:
-                self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
+                await self.send_message(exchange, self.OPCODE_STATUS_RESPONSE, self.StatusResponseMessage(
                     status=StatusCode.TIMED_REQUEST_MISMATCH,
                     interaction_model_revision=INTERACTION_MODEL_REVISION,
                 ))

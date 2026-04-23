@@ -1,8 +1,8 @@
 import ber_tlv.tlv
 from . import commands, crypto, iso7816, util
 
-def select(target: iso7816.Terminal, target_aid: bytes) -> commands.SelectResponse:
-    resp = target.response_chaining(iso7816.RequestAPDU(
+async def select(target: iso7816.Terminal, target_aid: bytes) -> commands.SelectResponse:
+    resp = await target.response_chaining(iso7816.RequestAPDU(
         instruction_class=0x00,
         instruction=0xA4,
         p1=0x04, p2=0x00,
@@ -13,8 +13,8 @@ def select(target: iso7816.Terminal, target_aid: bytes) -> commands.SelectRespon
         raise util.ISO7816Exception("SELECT failed", resp.sw1, resp.sw2)
     return commands.SelectResponse.decode(resp.data, target_aid)
 
-def control_flow(target: iso7816.Terminal, s1: int, s2: int) -> None:
-    resp = target.response_chaining(iso7816.RequestAPDU(
+async def control_flow(target: iso7816.Terminal, s1: int, s2: int) -> None:
+    resp = await target.response_chaining(iso7816.RequestAPDU(
         instruction_class=0x80,
         instruction=0x3C,
         p1=0x00, p2=0x00,
@@ -27,8 +27,8 @@ def control_flow(target: iso7816.Terminal, s1: int, s2: int) -> None:
     if not resp.is_success():
         raise util.ISO7816Exception("CONTROL FLOW failed", resp.sw1, resp.sw2)
 
-def auth0(target: iso7816.Terminal, req: commands.Auth0Request) -> commands.Auth0Response:
-    resp = target.response_chaining(iso7816.RequestAPDU(
+async def auth0(target: iso7816.Terminal, req: commands.Auth0Request) -> commands.Auth0Response:
+    resp = await target.response_chaining(iso7816.RequestAPDU(
         instruction_class=0x80,
         instruction=0x80,
         p1=0x00, p2=0x00,
@@ -39,8 +39,8 @@ def auth0(target: iso7816.Terminal, req: commands.Auth0Request) -> commands.Auth
         raise util.ISO7816Exception("AUTH0 failed", resp.sw1, resp.sw2)
     return commands.Auth0Response.decode(resp.data)
 
-def auth1(target: iso7816.Terminal, req: commands.Auth1Request, secure_channel: crypto.SecureChannel) -> commands.Auth1Response:
-    resp = target.response_chaining(iso7816.RequestAPDU(
+async def auth1(target: iso7816.Terminal, req: commands.Auth1Request, secure_channel: crypto.SecureChannel) -> commands.Auth1Response:
+    resp = await target.response_chaining(iso7816.RequestAPDU(
         instruction_class=0x80,
         instruction=0x81,
         p1=0x00, p2=0x00,
@@ -54,8 +54,8 @@ def auth1(target: iso7816.Terminal, req: commands.Auth1Request, secure_channel: 
         raise util.CryptoException("Secure channel failed")
     return commands.Auth1Response.decode(resp)
 
-def exchange(target: iso7816.Terminal, req: commands.ExchangeRequest, secure_channel: crypto.SecureChannel) -> commands.ExchangeResponse:
-    resp = target.response_chaining(iso7816.RequestAPDU(
+async def exchange(target: iso7816.Terminal, req: commands.ExchangeRequest, secure_channel: crypto.SecureChannel) -> commands.ExchangeResponse:
+    resp = await target.response_chaining(iso7816.RequestAPDU(
         instruction_class=0x80,
         instruction=0xC9,
         p1=0x00, p2=0x00,

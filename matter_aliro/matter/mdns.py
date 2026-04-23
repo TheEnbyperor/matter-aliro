@@ -3,7 +3,6 @@ import uuid
 import random
 import ifaddr
 import struct
-import threading
 import dns.message
 import dns.opcode
 import dns.rdtypes.ANY.PTR
@@ -12,25 +11,29 @@ import dns.rdtypes.IN.SRV
 import dns.rdtypes.IN.AAAA
 import typing
 import dataclasses
+import asyncio
 from . import encoding, device
 
 DNS_SD_SERVICES_NAME = dns.name.Name(["_services", "_dns-sd", "_udp", "local", ""])
+COAPS_DNS_NAME = dns.name.Name(["_aliro-coaps", "_udp", "local", ""])
 MATTER_DNS_NAME = dns.name.Name(["_matterc", "_udp", "local", ""])
 MATTER_FABRIC_DNS_NAME = dns.name.Name(["_matter", "_tcp", "local", ""])
 MATTER_COMMISSIONING_DNS_NAME = dns.name.Name(["_CM", "_sub", "_matterc", "_udp", "local", ""])
 
 
 class MDNS:
-    def __init__(self, device_state: device.DeviceState, port: int):
+    def __init__(self, device_state: device.DeviceState, port: int, coaps_port: int):
         self.dns_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         self.dns_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.dns_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         self.dns_socket.bind(("", 5353))
+        self.dns_socket.setblocking(False)
         self.add_dns_socket_to_multicast_group()
 
         self.instance_name = f"{random.randint(0, 2 ** 64 - 1):016X}"
         self.host_name = f"{uuid.getnode():012X}"
         self.port = port
+        self.coaps_port = coaps_port
         self.device = device_state
 
     def add_dns_socket_to_multicast_group(self):
@@ -43,18 +46,23 @@ class MDNS:
         self.dns_socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 255)
         self.dns_socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_LOOP, True)
 
-    def process_packets(self):
-        timer = threading.Timer(1, self.send_unsolicited_packets)
-        timer.start()
+    async def process_packets(self):
+        loop = asyncio.get_event_loop()
+        asyncio.create_task(self.send_unsolicited_packets(0, 1))
         while True:
-            buf, addr = self.dns_socket.recvfrom(9000)
+            buf, addr = await loop.sock_recvfrom(self.dns_socket, 9000)
             try:
                 msg = dns.message.from_wire(buf)
             except dns.exception.DNSException:
                 continue
-            self.process_message(msg, addr)
+            await self.process_message(msg, addr)
 
-    def send_unsolicited_packets(self, count: int = 0):
+    async def send_unsolicited_packets(self, count: int = 0, delay: typing.Optional[float] = None) -> None:
+        loop = asyncio.get_event_loop()
+
+        if delay is not None:
+            await asyncio.sleep(delay)
+
         for iface in ifaddr.get_adapters():
             response = dns.message.Message(0)
             response.flags = dns.flags.QR
@@ -66,6 +74,15 @@ class MDNS:
                     dns.rdataclass.RdataClass.IN,
                     dns.rdatatype.RdataType.PTR,
                     self.instance_dns_name
+                )
+            ))
+            response.answer.append(dns.rrset.from_rdata(
+                COAPS_DNS_NAME,
+                300,
+                dns.rdtypes.ANY.PTR.PTR(
+                    dns.rdataclass.RdataClass.IN,
+                    dns.rdatatype.RdataType.PTR,
+                    self.coaps_instance_dns_name
                 )
             ))
             if self.device.in_commissioning_mode:
@@ -115,18 +132,27 @@ class MDNS:
                 )
             ))
             self.add_srv_response(None, response)
+            self.add_coaps_srv_response(None, response)
             self.add_txt_response(None, response)
+            self.add_coaps_txt_response(None, response)
             self.add_addr_response(None, response, iface.index)
 
             response_wire = response.to_wire()
-            self.dns_socket.sendto(response_wire, ("ff02::fb", 5353, 0, iface.index))
+            await loop.sock_sendto(self.dns_socket, response_wire, ("ff02::fb", 5353, 0, iface.index))
 
         if count < 8:
-            timer = threading.Timer(2 ** count, self.send_unsolicited_packets, args=(count + 1,))
-            timer.start()
+            asyncio.create_task(self.send_unsolicited_packets(count + 1, 2 ** count))
 
-    def send_unsolicited_fabric_packets(self, fabric_index: int, count: int = 0):
+    async def send_unsolicited_fabric_packets(self, fabric_index: int, count: int = 0, delay: typing.Optional[float] = None) -> None:
+        loop = asyncio.get_event_loop()
+
+        if delay is not None:
+            await asyncio.sleep(delay)
+
+        if fabric_index not in self.device.fabrics:
+            return
         fabric = self.device.fabrics[fabric_index]
+
         for iface in ifaddr.get_adapters():
             response = dns.message.Message(0)
             response.flags = dns.flags.QR
@@ -154,19 +180,23 @@ class MDNS:
             self.add_addr_response(None, response, iface.index)
 
             response_wire = response.to_wire()
+            await loop.sock_sendto(self.dns_socket, response_wire, ("ff02::fb", 5353, 0, iface.index))
             self.dns_socket.sendto(response_wire, ("ff02::fb", 5353, 0, iface.index))
 
         if count < 8:
-            timer = threading.Timer(2 ** count, self.send_unsolicited_packets, args=(count + 1,))
-            timer.start()
+            asyncio.create_task(self.send_unsolicited_fabric_packets(fabric_index, count + 1, 2 ** count))
 
-    def process_message(self, msg: dns.message.Message, source_addr):
+    async def process_message(self, msg: dns.message.Message, source_addr):
+        loop = asyncio.get_event_loop()
         if msg.opcode() == dns.opcode.QUERY and not (msg.flags & dns.flags.QR):
             response = dns.message.Message(msg.id)
             response.flags = dns.flags.QR | dns.flags.AA
             response.set_opcode(dns.opcode.QUERY)
+            is_unicast = False
             for question in msg.question:
-                if question.rdclass != dns.rdataclass.RdataClass.IN:
+                if question.rdclass == 0x8001:
+                    is_unicast = True
+                elif question.rdclass != dns.rdataclass.RdataClass.IN:
                     continue
                 if question.rdtype == dns.rdatatype.RdataType.PTR:
                     if question.name == DNS_SD_SERVICES_NAME:
@@ -179,6 +209,15 @@ class MDNS:
                                 MATTER_DNS_NAME,
                             )
                         ))
+                        self.add_dns_response(msg, response, dns.rrset.from_rdata(
+                            DNS_SD_SERVICES_NAME,
+                            300,
+                            dns.rdtypes.ANY.PTR.PTR(
+                                dns.rdataclass.RdataClass.IN,
+                                dns.rdatatype.RdataType.PTR,
+                                COAPS_DNS_NAME,
+                            )
+                        ))
                         continue
                     elif question.name == MATTER_DNS_NAME:
                         self.add_dns_response(msg, response, dns.rrset.from_rdata(
@@ -188,6 +227,16 @@ class MDNS:
                                 dns.rdataclass.RdataClass.IN,
                                 dns.rdatatype.RdataType.PTR,
                                 self.instance_dns_name
+                            )
+                        ))
+                    elif question.name == COAPS_DNS_NAME:
+                        self.add_dns_response(msg, response, dns.rrset.from_rdata(
+                            COAPS_DNS_NAME,
+                            300,
+                            dns.rdtypes.ANY.PTR.PTR(
+                                dns.rdataclass.RdataClass.IN,
+                                dns.rdatatype.RdataType.PTR,
+                                self.coaps_instance_dns_name,
                             )
                         ))
                     elif question.name == MATTER_COMMISSIONING_DNS_NAME and self.device.in_commissioning_mode:
@@ -273,12 +322,18 @@ class MDNS:
                                     self.add_addr_response(msg, response, source_addr[3], additional=True)
                         continue
                     self.add_srv_response(msg, response, additional=True)
+                    self.add_coaps_srv_response(msg, response, additional=True)
                     self.add_txt_response(msg, response, additional=True)
+                    self.add_coaps_txt_response(msg, response, additional=True)
                     self.add_addr_response(msg, response, source_addr[3], additional=True)
                 elif question.rdtype == dns.rdatatype.RdataType.SRV:
                     if question.name == self.instance_dns_name:
                         self.add_srv_response(msg, response)
                         self.add_txt_response(msg, response, additional=True)
+                        self.add_addr_response(msg, response, source_addr[3], additional=True)
+                    elif question.name == self.coaps_instance_dns_name:
+                        self.add_coaps_srv_response(msg, response)
+                        self.add_coaps_txt_response(msg, response, additional=True)
                         self.add_addr_response(msg, response, source_addr[3], additional=True)
                     for fabric in self.device.fabrics.values():
                         if question.name == self.fabric_instance_dns_name(fabric):
@@ -289,6 +344,10 @@ class MDNS:
                     if question.name == self.instance_dns_name:
                         self.add_txt_response(msg, response)
                         self.add_srv_response(msg, response, additional=True)
+                        self.add_addr_response(msg, response, source_addr[3], additional=True)
+                    elif question.name == self.coaps_instance_dns_name:
+                        self.add_coaps_txt_response(msg, response)
+                        self.add_coaps_srv_response(msg, response, additional=True)
                         self.add_addr_response(msg, response, source_addr[3], additional=True)
                     for fabric in self.device.fabrics.values():
                         if question.name == self.fabric_instance_dns_name(fabric):
@@ -301,7 +360,11 @@ class MDNS:
 
             if response.answer:
                 response_wire = response.to_wire()
-                self.dns_socket.sendto(response_wire, ("ff02::fb", 5353, 0, source_addr[3]))
+                if is_unicast:
+                    resp_addr = source_addr
+                else:
+                    resp_addr = ("ff02::fb", 5353, 0, source_addr[3])
+                await loop.sock_sendto(self.dns_socket, response_wire, resp_addr)
 
     def add_srv_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
                          additional: bool = False):
@@ -329,6 +392,20 @@ class MDNS:
                 0,
                 0,
                 self.port,
+                self.device_dns_name
+            )
+        ), additional)
+
+    def add_coaps_srv_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message, additional: bool = False):
+        self.add_dns_response(query, response, dns.rrset.from_rdata(
+            self.coaps_instance_dns_name,
+            300,
+            dns.rdtypes.IN.SRV.SRV(
+                dns.rdataclass.RdataClass.IN,
+                dns.rdatatype.RdataType.SRV,
+                0,
+                0,
+                self.coaps_port,
                 self.device_dns_name
             )
         ), additional)
@@ -393,6 +470,17 @@ class MDNS:
             )
         ), additional)
 
+    def add_coaps_txt_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message, additional: bool = False):
+        self.add_dns_response(query, response, dns.rrset.from_rdata(
+            self.coaps_instance_dns_name,
+            300,
+            dns.rdtypes.ANY.TXT.TXT(
+                dns.rdataclass.RdataClass.IN,
+                dns.rdatatype.RdataType.TXT,
+                self.encode_dns_sd_txt({})
+            )
+        ), additional)
+
     @staticmethod
     def encode_dns_sd_txt(data: typing.Dict) -> typing.List[bytes]:
         out = []
@@ -408,6 +496,8 @@ class MDNS:
                 else:
                     i.extend(bytes(v))
                 out.append(bytes(i))
+        if not out:
+            out.append(b"")
         return out
 
     @staticmethod
@@ -446,6 +536,10 @@ class MDNS:
     @property
     def instance_dns_name(self) -> dns.name.Name:
         return dns.name.Name([self.instance_name, "_matterc", "_udp", "local", ""])
+
+    @property
+    def coaps_instance_dns_name(self) -> dns.name.Name:
+        return dns.name.Name([self.instance_name, "_aliro-coaps", "_udp", "local", ""])
 
     @staticmethod
     def fabric_instance_dns_name(fabric: device.Fabric) -> dns.name.Name:

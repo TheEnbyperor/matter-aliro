@@ -21,9 +21,9 @@ class RequestAPDU:
         self.expected_response_length = expected_response_length
 
     def __str__(self):
-        return (f"RequestAPDU(class={self.instruction_class:02x}, "
-                f"instruction={self.instruction:02x}, "
-                f"p1={self.p1:02x}, p2={self.p2:02x}, "
+        return (f"RequestAPDU(class={self.instruction_class:02X}, "
+                f"instruction={self.instruction:02X}, "
+                f"p1={self.p1:02X}, p2={self.p2:02X}, "
                 f"data={self.data.hex().upper()}), "
                 f"expected_response_length={self.expected_response_length})")
 
@@ -101,7 +101,7 @@ class ResponseAPDU:
 
     def __str__(self):
         return (f"ResponseAPDU(data={self.data.hex().upper()}, "
-                f"sw1={self.sw1:02x}, sw2={self.sw2:02x})")
+                f"sw1={self.sw1:02X}, sw2={self.sw2:02X})")
 
     def __repr__(self):
         return str(self)
@@ -110,11 +110,11 @@ class ResponseAPDU:
         return self.sw1 == 0x90 and self.sw2 == 0x00
 
 class Terminal(metaclass=abc.ABCMeta):
-    def transmit(self, request: RequestAPDU) -> ResponseAPDU:
+    async def transmit(self, request: RequestAPDU) -> ResponseAPDU:
         raise NotImplementedError()
 
-    def response_chaining(self, request: RequestAPDU) -> ResponseAPDU:
-        resp = self.transmit(request)
+    async def response_chaining(self, request: RequestAPDU) -> ResponseAPDU:
+        resp = await self.transmit(request)
         if resp.sw1 == 0x61:
             data = bytearray(resp.data)
             while resp.sw1 == 0x61:

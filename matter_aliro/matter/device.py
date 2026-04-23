@@ -252,7 +252,7 @@ class DeviceState:
     def load_custom_state(self, name: str) -> typing.Optional[typing.Any]:
         state_file = self.state_dir / f"state_{name}.json"
         if state_file.is_file():
-            with open(self.state_dir / f"state_{name}.json", "r") as f:
+            with open(state_file, "r") as f:
                 try:
                     return json.load(f)
                 except json.decoder.JSONDecodeError:
@@ -262,7 +262,7 @@ class DeviceState:
 
     def save_custom_state(self, name: str, state: typing.Any):
         state_file = self.state_dir / f"state_{name}.json"
-        with open(self.state_dir / f"state_{name}.json", "w") as f:
+        with open(state_file, "w") as f:
             json.dump(state, f, indent=2)
 
     def set_pai_cert(self, cert: cryptography.x509.Certificate):

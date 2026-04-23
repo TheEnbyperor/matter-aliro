@@ -1,5 +1,6 @@
 import dataclasses
 import enum
+import logging
 import time
 import typing
 import secrets
@@ -17,6 +18,8 @@ from .. import device
 from ..message.messages import GeneralCode, StatusReport
 from ..message import protocol, message_layer
 from ..encoding import protocol_messages
+
+logger = logging.getLogger(__name__)
 
 
 class StatusCode(enum.IntEnum):
@@ -86,84 +89,84 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
         self.pase_state = {}
         self.case_state = {}
 
-    def handle_message(self, exchange: message_layer.Exchange, opcode: int, message: bytes):
-        self.release_next_message(exchange)
+    async def handle_message(self, exchange: message_layer.Exchange, opcode: int, message: bytes):
+        await self.release_next_message(exchange)
         if opcode == self.OPCODE_MSG_STANDALONE_ACK:
             if len(message) != 0:
-                print("WARN: non-empty payload on standalone ack")
+                logger.warning("non-empty payload on standalone ack")
             return
         elif opcode == self.OPCODE_STATUS_REPORT:
             if len(message) < 8:
-                print("WARN: payload too short for status report")
+                logger.warning("WARN: payload too short for status report")
                 return
             report = StatusReport.decode_from_bytes(message)
-            self._message_layer.status_report(exchange, report)
+            await self._message_layer.status_report(exchange, report)
         elif opcode == self.OPCODE_PBKDF_PARAM_REQ:
             try:
                 msg = self.PbkdfparamreqStruct.decode_from_bytes(message)
             except ValueError as e:
-                print(f"WARN: invalid payload on PBKDF parameter request: {e}")
-                self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
+                logger.warning(f"WARN: invalid payload on PBKDF parameter request: {e}")
+                await self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
                 return
-            self.pkbdf_param_request(exchange, msg)
+            await self.pkbdf_param_request(exchange, msg)
         elif opcode == self.OPCODE_PBKDF_PARAM_RSP:
-            print(f"WARN: PASE initiator not implemented")
+            logger.warning(f"WARN: PASE initiator not implemented")
         elif opcode == self.OPCODE_PASE_PAKE_1:
             try:
                 msg = self.Pake1Struct.decode_from_bytes(message)
             except ValueError as e:
-                print(f"WARN: invalid payload on PASE PAKE phase 1: {e}")
-                self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
+                logger.warning(f"WARN: invalid payload on PASE PAKE phase 1: {e}")
+                await self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
                 return
-            self.pase_pake_1(exchange, msg)
+            await self.pase_pake_1(exchange, msg)
         elif opcode == self.OPCODE_PASE_PAKE_2:
-            print(f"WARN: PASE initiator not implemented")
+            logger.warning(f"WARN: PASE initiator not implemented")
         elif opcode == self.OPCODE_PASE_PAKE_3:
             try:
                 msg = self.Pake3Struct.decode_from_bytes(message)
             except ValueError as e:
-                print(f"WARN: invalid payload on PASE PAKE phase 3: {e}")
-                self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
+                logger.warning(f"WARN: invalid payload on PASE PAKE phase 3: {e}")
+                await self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
                 return
-            self.pase_pake_3(exchange, msg)
+            await self.pase_pake_3(exchange, msg)
         elif opcode == self.OPCODE_CASE_SIGMA_1:
             try:
                 msg = self.Sigma1Struct.decode_from_bytes(message)
             except ValueError as e:
-                print(f"WARN: invalid payload on CASE sigma 1: {e}")
-                self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
+                logger.warning(f"WARN: invalid payload on CASE sigma 1: {e}")
+                await self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
                 return
-            self.case_sigma_1(exchange, msg)
+            await self.case_sigma_1(exchange, msg)
         elif opcode == self.OPCODE_CASE_SIGMA_2:
-            print(f"WARN: CASE initiator not implemented")
+            logger.warning(f"WARN: CASE initiator not implemented")
         elif opcode == self.OPCODE_CASE_SIGMA_3:
             try:
                 msg = self.Sigma3Struct.decode_from_bytes(message)
             except ValueError as e:
-                print(f"WARN: invalid payload on CASE sigma 3: {e}")
-                self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
+                logger.warning(f"WARN: invalid payload on CASE sigma 3: {e}")
+                await self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
                 return
-            self.case_sigma_3(exchange, msg)
+            await self.case_sigma_3(exchange, msg)
         else:
-            self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
-            print(f"Unknown opcode {opcode:02X}")
+            await self.send_status_report(exchange=exchange, general_code=GeneralCode.BAD_REQUEST)
+            logger.warning(f"Unknown opcode {opcode:02X}")
 
-    def handle_status_report(self, exchange: message_layer.Exchange, general_code: GeneralCode, protocol_code: int, protocol_data: bytes):
-        print(f"Received status report: {general_code.name} code={protocol_code}")
+    async def handle_status_report(self, exchange: message_layer.Exchange, general_code: GeneralCode, protocol_code: int, protocol_data: bytes):
+        logger.warning(f"Received status report: {general_code.name} code={protocol_code}")
         if general_code == GeneralCode.FAILURE:
             if exchange in self.pase_state:
-                print("PASE exchange failed")
+                logger.warning("PASE exchange failed")
                 del self.pase_state[exchange]
-                self._message_layer.close_exchange(exchange)
+                await self._message_layer.close_exchange(exchange)
             if exchange in self.case_state:
-                print("CASE exchange failed")
+                logger.warning("CASE exchange failed")
                 del self.case_state[exchange]
-                self._message_layer.close_exchange(exchange)
+                await self._message_layer.close_exchange(exchange)
 
-    def pkbdf_param_request(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.PbkdfparamreqStruct):
+    async def pkbdf_param_request(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.PbkdfparamreqStruct):
         if msg.passcode_id != 0:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
-            self._message_layer.close_exchange(exchange)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self._message_layer.close_exchange(exchange)
             return
 
         responder_random = secrets.token_bytes(32)
@@ -209,13 +212,13 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
             pbkdf_param_request=msg.on_the_wire_bytes,
             pbkdf_param_response=resp
         )
-        self.send_message(exchange, self.OPCODE_PBKDF_PARAM_RSP, resp)
+        await self.send_message(exchange, self.OPCODE_PBKDF_PARAM_RSP, resp)
 
-    def pase_pake_1(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Pake1Struct):
+    async def pase_pake_1(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Pake1Struct):
         pase_state = self.pase_state.get(exchange)
         if not pase_state:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
-            self._message_layer.close_exchange(exchange)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self._message_layer.close_exchange(exchange)
             return
 
         pb = crypto_pb(self.pake_values_responder)
@@ -235,19 +238,19 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
         )
         pase_state.ca = p2_output.cA
         pase_state.ke = p2_output.Ke
-        self.send_message(exchange, self.OPCODE_PASE_PAKE_2, resp)
+        await self.send_message(exchange, self.OPCODE_PASE_PAKE_2, resp)
 
-    def pase_pake_3(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Pake3Struct):
+    async def pase_pake_3(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Pake3Struct):
         pase_state = self.pase_state.get(exchange)
         if not pase_state:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
-            self._message_layer.close_exchange(exchange)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self._message_layer.close_exchange(exchange)
             return
 
         if msg.c_a != pase_state.ca:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.pase_state[exchange]
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
             return
 
         pase_state.pending_session.session_timestamp = time.time()
@@ -257,14 +260,14 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
         pase_state.pending_session.attestation_challenge = k[2 * CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES:3 * CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES]
 
         self._message_layer.secure_unicast_session_context[pase_state.pending_session.local_session_identifier] = pase_state.pending_session
-        self.send_status_report(exchange=exchange, general_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.value)
+        await self.send_status_report(exchange=exchange, general_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.value)
         del self.pase_state[exchange]
-        self._message_layer.close_exchange(exchange)
+        await self._message_layer.close_exchange(exchange)
 
-    def case_sigma_1(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Sigma1Struct):
+    async def case_sigma_1(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Sigma1Struct):
         if (msg.resumption_id and not msg.initiator_resume_mic) or (msg.initiator_resume_mic and not msg.resumption_id):
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
-            self._message_layer.close_exchange(exchange)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self._message_layer.close_exchange(exchange)
             return
 
         target_fabric = None
@@ -290,8 +293,8 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
                 break
 
         if not target_fabric:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.NO_SHARED_TRUST_ROOTS.value)
-            self._message_layer.close_exchange(exchange)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.NO_SHARED_TRUST_ROOTS.value)
+            await self._message_layer.close_exchange(exchange)
             return
 
         responder_random = secrets.token_bytes(32)
@@ -392,13 +395,13 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
             initiator_public_key=msg.initiator_eph_pub_key,
             responder_public_key=responder_ephemeral_public_key,
         )
-        self.send_message(exchange, self.OPCODE_CASE_SIGMA_2, resp)
+        await self.send_message(exchange, self.OPCODE_CASE_SIGMA_2, resp)
 
-    def case_sigma_3(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Sigma3Struct):
+    async def case_sigma_3(self, exchange: message_layer.Exchange, msg: protocol_messages.SecureChannelProtocol.Sigma3Struct):
         case_state = self.case_state.get(exchange)
         if not case_state:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
-            self._message_layer.close_exchange(exchange)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self._message_layer.close_exchange(exchange)
             return
 
         transcript_hasher = hashlib.sha256()
@@ -420,9 +423,9 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
                 nonce=b"NCASE_Sigma3N"
             )
         except cryptography.exceptions.InvalidTag:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
             return
 
         tbe_data = self.Sigma3Tbedata.decode_from_bytes(payload)
@@ -434,15 +437,15 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
             icac_cert = None
 
         if not certs.verify_noc_dn(noc_cert):
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
             return
 
         if icac_cert and not certs.verify_icac_dn(icac_cert):
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
             return
 
         fabric_id = next(filter(lambda a: a.variant == "matter-fabric-id", noc_cert.subject)).value
@@ -453,16 +456,16 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
         ), filter(lambda a: a.variant == "matter-noc-cat", noc_cert.subject)))
 
         if fabric_id != case_state.fabric.fabric_id:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
             return
 
         cert_chain = [noc_cert, icac_cert, case_state.fabric.rcac] if icac_cert else [noc_cert, case_state.fabric.rcac]
         if not certs.verify_chain(cert_chain):
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
             return
 
         noc_public_key = cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePublicKey.from_encoded_point(
@@ -488,9 +491,9 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
                 )
             )
         except cryptography.exceptions.InvalidSignature:
-            self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
+            await self.send_status_report(exchange=exchange, general_code=StatusCode.INVALID_PARAMETER.general_code(), protocol_code=StatusCode.INVALID_PARAMETER.value)
             del self.case_state[exchange]
-            self._message_layer.close_exchange(exchange)
+            await self._message_layer.close_exchange(exchange)
             return
 
         transcript_hasher = hashlib.sha256()
@@ -512,6 +515,6 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
         case_state.pending_session.cats = cats
 
         self._message_layer.secure_unicast_session_context[case_state.pending_session.local_session_identifier] = case_state.pending_session
-        self.send_status_report(exchange=exchange, general_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.value)
+        await self.send_status_report(exchange=exchange, general_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.general_code(), protocol_code=StatusCode.SESSION_ESTABLISHMENT_SUCCESS.value)
         del self.case_state[exchange]
-        self._message_layer.close_exchange(exchange)
+        await self._message_layer.close_exchange(exchange)

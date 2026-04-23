@@ -44,7 +44,8 @@ def add_granted_privilege(granted_privileges: typing.Set[cluster.Privileges], pr
         granted_privileges.add(cluster.Privileges.Operate)
         granted_privileges.add(cluster.Privileges.View)
 
-def get_granted_privileges(acl: typing.List[ACLEntry], subject_desc: ISD, endpoint_id: int, cluster_id: int, device_types: typing.Set[endpoint.DeviceType]) -> typing.Set[cluster.Privileges]:
+def get_granted_privileges(acl: typing.List[ACLEntry], subject_desc: ISD, endpoint_id: int, cluster_id: int, device_types: typing.Set[
+    endpoint.DeviceType]) -> typing.Set[cluster.Privileges]:
     device_types = {dt.id for dt in device_types}
     granted_privileges = set()
 

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 import typing
@@ -731,7 +732,7 @@ class OperationalCredentials(cluster.Cluster):
                 subjects=[data.case_admin_subject],
                 targets=[],
             ))
-            self.mdns.send_unsolicited_fabric_packets(fabric_idx)
+            asyncio.create_task(self.mdns.send_unsolicited_fabric_packets(fabric_idx))
             self.increment_data_version()
             self.attributes_changed([
                 self.nocs, self.fabrics, self.commissioned_fabrics,
@@ -781,7 +782,7 @@ class OperationalCredentials(cluster.Cluster):
         if data.fabric_index not in self.device_state.fabrics:
             return protocol_messages.NOCResponse(
                 status_code=protocol_messages.NodeOperationalCertStatusEnum.InvalidFabricIndex,
-                fabric_index=None,
+                fabric_index=data.fabric_index,
                 debug_text=""
             )
 
@@ -795,6 +796,7 @@ class OperationalCredentials(cluster.Cluster):
             if session.local_fabric_index == data.fabric_index:
                 tbd_id.add(sid)
                 tbd_session.add(session)
+                asyncio.create_task(self.message_layer.close_secure_unicast_session(session))
 
         tbd_exchange = set()
         for exchange in self.message_layer.exchanges:
@@ -805,6 +807,8 @@ class OperationalCredentials(cluster.Cluster):
         self.message_layer.in_use_session_ids -= tbd_id
         for sid in tbd_id:
             del self.message_layer.secure_unicast_session_context[sid]
+
+        self._interaction_model.cancel_subscriptions_for_fabric(data.fabric_index)
 
         if len(self.device_state.fabrics) == 0:
             self.device_state.in_commissioning_mode = True
@@ -817,6 +821,6 @@ class OperationalCredentials(cluster.Cluster):
 
         return protocol_messages.NOCResponse(
             status_code=protocol_messages.NodeOperationalCertStatusEnum.OK,
-            fabric_index=None,
+            fabric_index=data.fabric_index,
             debug_text=""
         )

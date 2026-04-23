@@ -1,0 +1,28 @@
+Proto DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
+	ReaderConfig ::= SEQUENCE {
+	    ecp                     OCTET STRING    OPTIONAL,
+		...
+	}
+
+	TargetDetected ::= SEQUENCE {
+	    uid                     OCTET STRING (4..11),
+	    ...
+	}
+
+	APDUCommand ::= SEQUENCE {
+	    instructionClass        INTEGER (0..255),
+        instruction             INTEGER (0..255),
+        p1                      INTEGER (0..255),
+        p2                      INTEGER (0..255),
+        data                    OCTET STRING,
+        expectedResponseLength  INTEGER (0..65536)
+	}
+
+	APDUResponse ::= SEQUENCE {
+        data                    OCTET STRING,
+        sw1                     INTEGER (0..255),
+        sw2                     INTEGER (0..255)
+	}
+
+END

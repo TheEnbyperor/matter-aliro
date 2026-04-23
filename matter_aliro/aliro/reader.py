@@ -24,8 +24,8 @@ class ExpeditedSuccess:
     secure_channel: crypto.SecureChannel
     new_persistent_key: typing.Optional[bytes]
 
-def notify_status(target: iso7816.Terminal, status: data_elements.ReaderStatus, secure_channel: crypto.SecureChannel):
-    exc_resp = command_handlers.exchange(target, commands.ExchangeRequest(
+async def notify_status(target: iso7816.Terminal, status: data_elements.ReaderStatus, secure_channel: crypto.SecureChannel):
+    exc_resp = await command_handlers.exchange(target, commands.ExchangeRequest(
         reader_status=status,
     ), secure_channel)
     if not exc_resp.is_success:
@@ -61,7 +61,7 @@ def _test_cryptogram(
         pass
     return None
 
-def run_aliro(
+async def run_aliro(
         target: iso7816.Terminal,
         reader_signing_key: cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey,
         reader_group_identifier: bytes,
@@ -77,12 +77,12 @@ def run_aliro(
 
     protocol_version = 0x0100
 
-    select_resp = command_handlers.select(target, EXPEDITED_AID)
+    select_resp = await command_handlers.select(target, EXPEDITED_AID)
     if select_resp.application_type != 0:
-        command_handlers.control_flow(target, 0x00, 0x27)
+        await command_handlers.control_flow(target, 0x00, 0x27)
         raise util.GeneralException("Application Type unsupported")
     if protocol_version not in select_resp.expedited_phase_supported_protocol_versions:
-        command_handlers.control_flow(target, 0x00, 0x27)
+        await command_handlers.control_flow(target, 0x00, 0x27)
         raise util.GeneralException("No supported expedited-phase protocol version")
 
     reader_ephemeral_key = cryptography.hazmat.primitives.asymmetric.ec.generate_private_key(
@@ -105,13 +105,13 @@ def run_aliro(
         reader_sub_group_identifier=reader_sub_group_identifier,
     )
     try:
-        auth0_resp = command_handlers.auth0(target, auth0_req)
+        auth0_resp = await command_handlers.auth0(target, auth0_req)
     except util.GeneralException as e:
-        command_handlers.control_flow(target, 0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise e
 
     if not auth0_resp.cryptogram:
-        command_handlers.control_flow(target,0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise util.EncodingException("Cryptogram not present")
 
     salt_input = crypto.SaltInput(
@@ -163,12 +163,12 @@ def run_aliro(
     step_up_sk = derived_keys_volatile[64:96]
 
     try:
-        auth1_resp = command_handlers.auth1(target, commands.Auth1Request(
+        auth1_resp = await command_handlers.auth1(target, commands.Auth1Request(
             key_type=data_elements.AccessCredentialKeyType.KeySlot,
             reader_signature=auth1_signature,
         ), secure_channel)
     except RuntimeError as e:
-        command_handlers.control_flow(target,0x00, 0x00)
+        await command_handlers.control_flow(target, 0x00, 0x00)
         raise e
 
     for k in known_access_keys:
@@ -192,12 +192,12 @@ def run_aliro(
 
     if auth1_resp.signalling_bitmap.access_document_retrievable:
         if auth1_resp.signalling_bitmap.step_up_select_required:
-            step_up_select_resp = command_handlers.select(target, STEP_UP_AID)
+            step_up_select_resp = await command_handlers.select(target, STEP_UP_AID)
             if step_up_select_resp.application_type != 0:
-                command_handlers.control_flow(target, 0x00, 0x27)
+                await command_handlers.control_flow(target, 0x00, 0x27)
                 raise util.GeneralException("Application Type unsupported")
 
-        return mdl_reader.run_step_up(
+        return await mdl_reader.run_step_up(
             target=target,
             trusted_issuer_keys=trusted_issuer_keys,
             step_up_sk=step_up_sk,
