@@ -10,11 +10,11 @@ class Device:
     mdns: mdns.MDNS
     im: interaction_model.InteractionModel
 
-    def __init__(self, meta: device.DeviceMeta, state_folder: pathlib.Path, coaps_port: int):
+    def __init__(self, meta: device.DeviceMeta, state_folder: pathlib.Path, matter_port: int, coaps_port: int):
         self.state = device.DeviceState(meta, state_folder)
         self.state.load_state()
 
-        self.message_layer = message_layer.MessageLayer(self.state)
+        self.message_layer = message_layer.MessageLayer(self.state, matter_port)
         self.mdns = mdns.MDNS(self.state, self.message_layer.port, coaps_port)
 
         self.im = interaction_model.InteractionModel(self.state, self.message_layer, self.mdns)

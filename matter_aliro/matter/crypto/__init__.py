@@ -14,6 +14,7 @@ CRYPTO_CURVE = ecdsa.curves.NIST256p
 CRYPTO_GROUP_SIZE_BYTES = 32
 CRYPTO_W_SIZE_BYTES = CRYPTO_GROUP_SIZE_BYTES + 8
 CRYPTO_AEAD_MIC_LENGTH_BYTES = 16
+CRYPTO_PUBLIC_KEY_SIZE_BYTES = 65
 POINT_M = ecdsa.ellipticcurve.Point.from_bytes(
     CRYPTO_CURVE.curve,
     b"\x02\x88\x6e\x2f\x97\xac\xe4\x6e\x55\xba\x9d\xd7\x24\x25\x79\xf2\x99\x3b\x64\xe1\x6e\xf3\xdc\xab\x95\xaf\xd4\x97\x33\x3d\x8f\xa1\x2f",
@@ -93,6 +94,14 @@ class CryptoPAKEValuesInitiator:
 class CryptoPAKEValuesResponder:
     w0: int
     L: ecdsa.ellipticcurve.PointJacobi
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "CryptoPAKEValuesResponder":
+        assert len(data) == CRYPTO_GROUP_SIZE_BYTES + CRYPTO_PUBLIC_KEY_SIZE_BYTES
+        return cls(
+            w0=int.from_bytes(data[0:CRYPTO_GROUP_SIZE_BYTES], "big"),
+            L=ecdsa.ellipticcurve.PointJacobi.from_bytes(CRYPTO_CURVE.curve, data[CRYPTO_GROUP_SIZE_BYTES:CRYPTO_GROUP_SIZE_BYTES + CRYPTO_PUBLIC_KEY_SIZE_BYTES],),
+        )
 
     @classmethod
     def generate(cls, passcode: int, params: CryptoPBKDFParameterSet) -> "CryptoPAKEValuesResponder":

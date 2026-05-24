@@ -1,0 +1,8 @@
+schemas/
+state/
+venv/
+.gitignore
+compile_schemas.py
+config.yaml
+LICENSE.md
+README.md

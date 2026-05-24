@@ -101,7 +101,8 @@ class DeviceState:
         self.state_dir = state_dir
         self.meta = meta
         self.country_code = "XX"
-        self.discriminator = 0
+        self.basic_discriminator = 0
+        self.discriminator = self.basic_discriminator
         self.passcode = 0
         self.acl: typing.List[acl.ACLEntry] = []
         self.fabrics: typing.Dict[int, Fabric] = {}
@@ -115,7 +116,8 @@ class DeviceState:
 
     def init_state(self):
         self.country_code = "XX"
-        self.discriminator = random.randint(0, 0xfff)
+        self.basic_discriminator = random.randint(0, 0xfff)
+        self.discriminator = self.basic_discriminator
         self.passcode = self.generate_passcode()
         self.in_commissioning_mode = True
         self.fabrics = {}
@@ -126,7 +128,7 @@ class DeviceState:
         with open(self.state_dir / "device_state.json", "w") as f:
             json.dump({
                 "country_code": self.country_code,
-                "discriminator": self.discriminator,
+                "discriminator": self.basic_discriminator,
                 "passcode": self.passcode,
                 "next_event_id": self.next_event_id,
                 "fabrics": [{
@@ -183,7 +185,8 @@ class DeviceState:
             with open(self.state_dir / "device_state.json", "r") as f:
                 state = json.load(f)
                 self.country_code = str(state["country_code"])
-                self.discriminator = int(state["discriminator"])
+                self.basic_discriminator = int(state["discriminator"])
+                self.discriminator = self.basic_discriminator
                 self.passcode = int(state["passcode"])
                 self.in_commissioning_mode = len(state["fabrics"]) == 0
                 self.next_event_id = int(state["next_event_id"])
@@ -320,7 +323,7 @@ class DeviceState:
                 wifi_public_action_frame=False,
                 nfc=False
             ),
-            discriminator=self.discriminator,
+            discriminator=self.basic_discriminator,
             passcode=self.passcode,
         )
         return f"MT:{base38_encode(data.encode_to_bytes())}"
@@ -328,8 +331,8 @@ class DeviceState:
     @property
     def manual_discovery_string(self) -> str:
         digits = [
-            str(self.discriminator >> 10),
-            f"{((self.discriminator & 0x300) << 6) | (self.passcode & 0x3FFF):05}",
+            str(self.basic_discriminator >> 10),
+            f"{((self.basic_discriminator & 0x300) << 6) | (self.passcode & 0x3FFF):05}",
             f"{(self.passcode >> 14):04}"
         ]
         v = "".join(digits)

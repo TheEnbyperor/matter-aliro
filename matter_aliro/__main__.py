@@ -139,9 +139,10 @@ async def main():
     root.add_resource([".well-known", "core"], aiocoap.resource.WKCResource(root.get_resources_as_linkheader))
 
     address = "::"
-    port = 5684
-    coap.CoAPServer(root, coap.CoAPDTLS, (address, port))
-    logging.info(f"CoAP listening on {address} port {port}")
+    matter_port = 5451
+    coaps_port = 5684
+    coap.CoAPServer(root, coap.CoAPDTLS, (address, coaps_port))
+    logging.info(f"CoAP listening on {address} port {coaps_port}")
 
     matter_device = matter.Device(matter.DeviceMeta(
         vendor_id=0xFFF1,
@@ -150,7 +151,7 @@ async def main():
         product_name="Aliro Lock",
         primary_device_type=0x000A,
         device_name="Aliro Lock",
-    ), pathlib.Path("state"), coaps_port=port)
+    ), pathlib.Path("state"), matter_port=matter_port, coaps_port=coaps_port)
 
     with open("pai-cert.pem", "rb") as f:
         matter_device.state.set_pai_cert(cryptography.x509.load_pem_x509_certificate(f.read()))

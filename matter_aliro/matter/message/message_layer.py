@@ -280,9 +280,9 @@ class MessageLayer:
     secure_unicast_session_context: typing.Dict[int, SecureSessionContext]
     exchanges: typing.Set[Exchange]
 
-    def __init__(self, device_state: device.DeviceState):
+    def __init__(self, device_state: device.DeviceState, port: int):
         self.device_state = device_state
-        self.port = 5451
+        self.port = port
         self.matter_udp_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         self.matter_udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.matter_udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)

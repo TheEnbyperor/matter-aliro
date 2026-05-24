@@ -84,9 +84,10 @@ class SecureChannel(protocol_messages.SecureChannelProtocol, protocol.Protocol):
     def __init__(self, layer: message_layer.MessageLayer, device_state: device.DeviceState):
         super().__init__(layer)
         self.device_state = device_state
-        self.pbkdf_params = CryptoPBKDFParameterSet.new()
+        self.basic_pbkdf_params = CryptoPBKDFParameterSet.new()
+        self.pbkdf_params = self.basic_pbkdf_params
         self.basic_pake_values_responder = CryptoPAKEValuesResponder.generate(device_state.passcode, self.pbkdf_params)
-        self.pake_values_responder = CryptoPAKEValuesResponder.generate(device_state.passcode, self.pbkdf_params)
+        self.pake_values_responder = self.basic_pake_values_responder
         self.pase_state = {}
         self.case_state = {}
 

@@ -8,10 +8,11 @@ import cryptography.hazmat.primitives.hashes
 import cryptography.hazmat.primitives.asymmetric.ec
 import cryptography.hazmat.primitives.asymmetric.utils
 from . import endpoint, cluster, interaction_model, acl
-from .. import device, message, mdns
+from .. import device, message, mdns, crypto
 from ..encoding import tlv
 from ..crypto import certs
 from ..encoding import protocol_messages
+from ..mdns import MDNS
 
 logger = logging.getLogger(__name__)
 
@@ -488,10 +489,11 @@ class AdministratorCommissioning(cluster.Cluster):
     open_basic_commissioning_window = cluster.Command(0x0001, None, cluster.Privileges.Administer, t_timed=True)
     revoke_commissioning_window = cluster.Command(0x0002, None, cluster.Privileges.Administer, t_timed=True)
 
-    def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer):
+    def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer, dns: mdns.MDNS):
         super().__init__()
         self.device_state = device_state
         self.message_layer = ml
+        self.mdns = dns
         self.enhanced_commissioning = False
         self.basic_commissioning = False
         self.current_admin_fabric_index = None
@@ -519,14 +521,20 @@ class AdministratorCommissioning(cluster.Cluster):
         if self.device_state.in_commissioning_mode or self.enhanced_commissioning or self.basic_commissioning:
             return protocol_messages.CommissioningWindowStatusCodeEnum.Busy
 
-        print(data)
         asyncio.create_task(self.cancel_commissioning(data.commissioning_timeout))
+        self.message_layer.secure_channel.pbkdf_params = crypto.CryptoPBKDFParameterSet(
+            iterations=data.iterations,
+            salt=data.salt,
+        )
+        self.message_layer.secure_channel.pake_values_responder = crypto.CryptoPAKEValuesResponder.from_bytes(data.pake_passcode_verifier)
         self.enhanced_commissioning = True
         self.device_state.in_commissioning_mode = True
+        self.device_state.discriminator = data.discriminator
         self.current_admin_fabric_index = session.local_fabric_index
         self.current_admin_vendor_id = self.device_state.fabrics[session.local_fabric_index].admin_vendor_id
         self.increment_data_version()
         self.attributes_changed([self.window_status, self.admin_fabric_index, self.admin_vendor_id])
+        asyncio.create_task(self.mdns.send_unsolicited_packets())
         return protocol_messages.CommissioningWindowStatusCodeEnum.Success
 
     @open_basic_commissioning_window.handler
@@ -541,6 +549,7 @@ class AdministratorCommissioning(cluster.Cluster):
         self.current_admin_vendor_id = self.device_state.fabrics[session.local_fabric_index].admin_vendor_id
         self.increment_data_version()
         self.attributes_changed([self.window_status, self.admin_fabric_index, self.admin_vendor_id])
+        asyncio.create_task(self.mdns.send_unsolicited_packets())
         return protocol_messages.CommissioningWindowStatusCodeEnum.Success
 
     @revoke_commissioning_window.handler
@@ -557,8 +566,10 @@ class AdministratorCommissioning(cluster.Cluster):
         if not self.enhanced_commissioning and not self.basic_commissioning:
             return
 
-        self.device_state.in_commissioning_mode = False
+        self.message_layer.secure_channel.pbkdf_params = self.message_layer.secure_channel.basic_pbkdf_params
         self.message_layer.secure_channel.pake_values_responder = self.message_layer.secure_channel.basic_pake_values_responder
+        self.device_state.in_commissioning_mode = False
+        self.device_state.discriminator = self.device_state.basic_discriminator
         self.basic_commissioning = False
         self.enhanced_commissioning = False
         self.current_admin_fabric_index = None
