@@ -2,6 +2,8 @@ import dataclasses
 import functools
 import collections
 import typing
+import typing_extensions
+
 from . import Encodable, Decodable, TLVTag, TLVCommonTag, TLVContextSpecificTag, TLVImplicitTag, TLVFullyQualifiedTag, TLVList, TLVArray, TLVInt, TLVUInt, TLVElement
 
 class Null:
@@ -117,7 +119,7 @@ class TaggedFields:
     @classmethod
     def decode_type(cls, source: str, v, ft_type, metadata: dict):
         if isinstance(ft_type, typing.ForwardRef):
-            ft_type = ft_type.evaluate(owner=cls)
+            ft_type = typing_extensions.evaluate_forward_ref(ft_type, owner=cls)
 
         ft_type_origin = typing.get_origin(ft_type)
         ft_type_args = typing.get_args(ft_type)

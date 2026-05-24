@@ -10,3 +10,4 @@ dnspython
 qrcode
 zeroconf
 pyparsing
+typing-extensions
