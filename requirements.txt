@@ -1,0 +1,12 @@
+cryptography
+ber-tlv
+ecdsa
+cbor2
+aiocoap
+cffi
+asn1tools
+ifaddr
+dnspython
+qrcode
+zeroconf
+pyparsing

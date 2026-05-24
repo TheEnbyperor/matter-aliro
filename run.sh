@@ -1,3 +1,3 @@
-#!/usr/bin/env bash
+#!/usr/bin/with-contenv bash
 
-python3 -m matter_aliro
+/venv/bin/python3 -m matter_aliro
