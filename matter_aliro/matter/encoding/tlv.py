@@ -122,7 +122,7 @@ class TaggedFields:
         ft_type_origin = typing.get_origin(ft_type)
         ft_type_args = typing.get_args(ft_type)
 
-        if isinstance(ft_type_origin, type) and issubclass(ft_type_origin, typing.Union):
+        if type(ft_type_origin) is type(typing.Union):
             nullable = any(isinstance(a, type) and issubclass(a, Null) for a in ft_type_args)
             ft_type = ft_type_args[0]
             ft_type_origin = typing.get_origin(ft_type)
