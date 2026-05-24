@@ -1,10 +1,17 @@
 import dataclasses
 import functools
 import collections
+import sys
+import types
 import typing
 import typing_extensions
 
 from . import Encodable, Decodable, TLVTag, TLVCommonTag, TLVContextSpecificTag, TLVImplicitTag, TLVFullyQualifiedTag, TLVList, TLVArray, TLVInt, TLVUInt, TLVElement
+
+if sys.version_info >= (3, 10):
+    _UNION_TYPES = {typing.Union, types.UnionType}
+else:
+    _UNION_TYPES = {typing.Union}
 
 class Null:
     def __bool__(self):
@@ -124,7 +131,7 @@ class TaggedFields:
         ft_type_origin = typing.get_origin(ft_type)
         ft_type_args = typing.get_args(ft_type)
 
-        if type(ft_type_origin) is type(typing.Union):
+        if ft_type_origin in _UNION_TYPES:
             nullable = any(isinstance(a, type) and issubclass(a, Null) for a in ft_type_args)
             ft_type = ft_type_args[0]
             ft_type_origin = typing.get_origin(ft_type)

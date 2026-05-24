@@ -196,7 +196,10 @@ class MDNS:
                 await loop.sock_sendto(self.dns_socket, response_wire, ("ff02::fb", 5353, 0, iface.index))
             except OSError:
                 pass
-            self.dns_socket.sendto(response_wire, ("ff02::fb", 5353, 0, iface.index))
+            try:
+                self.dns_socket.sendto(response_wire, ("ff02::fb", 5353, 0, iface.index))
+            except OSError:
+                pass
 
         if count < 8:
             asyncio.create_task(self.send_unsolicited_fabric_packets(fabric_index, count + 1, 2 ** count))

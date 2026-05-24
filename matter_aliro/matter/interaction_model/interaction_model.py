@@ -337,7 +337,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             try:
                 msg = self.TimedRequestMessage.decode_from_bytes(message)
             except ValueError as e:
-                logger.warning(f"invalid payload on invoke request: {e}")
+                logger.warning(f"invalid payload on timed request: {e}")
                 await self.send_status_report(exchange=exchange, general_code=messages.GeneralCode.BAD_REQUEST)
                 return
             await self.timed_request(exchange, msg)
