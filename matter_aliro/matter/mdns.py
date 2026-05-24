@@ -64,6 +64,9 @@ class MDNS:
             await asyncio.sleep(delay)
 
         for iface in ifaddr.get_adapters():
+            if not any(addr.is_IPv6 for addr in iface.ips):
+                continue
+
             response = dns.message.Message(0)
             response.flags = dns.flags.QR
             response.set_opcode(dns.opcode.QUERY)
@@ -138,7 +141,10 @@ class MDNS:
             self.add_addr_response(None, response, iface.index)
 
             response_wire = response.to_wire()
-            await loop.sock_sendto(self.dns_socket, response_wire, ("ff02::fb", 5353, 0, iface.index))
+            try:
+                await loop.sock_sendto(self.dns_socket, response_wire, ("ff02::fb", 5353, 0, iface.index))
+            except OSError:
+                pass
 
         if count < 8:
             asyncio.create_task(self.send_unsolicited_packets(count + 1, 2 ** count))
@@ -157,6 +163,9 @@ class MDNS:
         fabric = self.device.fabrics[fabric_index]
 
         for iface in ifaddr.get_adapters():
+            if not any(addr.is_IPv6 for addr in iface.ips):
+                continue
+
             response = dns.message.Message(0)
             response.flags = dns.flags.QR
             response.set_opcode(dns.opcode.QUERY)
@@ -183,7 +192,10 @@ class MDNS:
             self.add_addr_response(None, response, iface.index)
 
             response_wire = response.to_wire()
-            await loop.sock_sendto(self.dns_socket, response_wire, ("ff02::fb", 5353, 0, iface.index))
+            try:
+                await loop.sock_sendto(self.dns_socket, response_wire, ("ff02::fb", 5353, 0, iface.index))
+            except OSError:
+                pass
             self.dns_socket.sendto(response_wire, ("ff02::fb", 5353, 0, iface.index))
 
         if count < 8:
@@ -367,7 +379,10 @@ class MDNS:
                     resp_addr = source_addr
                 else:
                     resp_addr = ("ff02::fb", 5353, 0, source_addr[3])
-                await loop.sock_sendto(self.dns_socket, response_wire, resp_addr)
+                try:
+                    await loop.sock_sendto(self.dns_socket, response_wire, resp_addr)
+                except OSError:
+                    pass
 
     def add_srv_response(
             self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
