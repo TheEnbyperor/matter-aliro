@@ -208,7 +208,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
     OPCODE_INVOKE_RESPONSE = 0x09
     OPCODE_TIMED_REQUEST = 0x0A
 
-    def __init__(self, state: device.DeviceState, layer: message_layer.MessageLayer, dns: mdns.MDNS):
+    def __init__(self, state: "device.DeviceState", layer: "message_layer.MessageLayer", dns: "mdns.MDNS"):
         super().__init__(layer)
         self._endpoints: typing.Dict[int, endpoint.Endpoint] = {}
         self._next_endpoint = 0
@@ -375,8 +375,9 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
             await self._message_layer.close_exchange(exchange)
 
     @staticmethod
-    def decompress_paths(paths: typing.Iterable[protocol_messages.ImProtocol.AttributePathIB]) -> typing.Generator[
-        typing.Tuple[int, int, int, int, int]]:
+    def decompress_paths(
+            paths: typing.Iterable[protocol_messages.ImProtocol.AttributePathIB]
+    ) -> typing.Iterator[typing.Tuple[int, int, int, int, int]]:
         previous_node = None
         previous_endpoint = None
         previous_cluster = None

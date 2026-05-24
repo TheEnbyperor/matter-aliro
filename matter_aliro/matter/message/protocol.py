@@ -4,7 +4,7 @@ from .. import encoding
 from . import message_layer, messages
 
 class Protocol(metaclass=abc.ABCMeta):
-    def __init__(self, layer: message_layer.MessageLayer):
+    def __init__(self, layer: "message_layer.MessageLayer"):
         self._message_layer = layer
         self._in_flight_exchanges = set()
         self._pending_messages = {}

@@ -132,6 +132,10 @@ async def nfc_handler(did: bytes, target: views.Target):
             await reader.notify_status(target, data_elements.ReaderStatus.ReaderSecure, resp.secure_channel)
 
 async def main():
+    state_dir = pathlib.Path("/data/state")
+    if not state_dir.is_dir():
+        state_dir.mkdir()
+
     root = aiocoap.resource.Site()
     root.add_resource(["whoami"], views.WhoAmI())
     root.add_resource(["config"], views.DeviceConfig(config_handler))
@@ -151,7 +155,7 @@ async def main():
         product_name="Aliro Lock",
         primary_device_type=0x000A,
         device_name="Aliro Lock",
-    ), pathlib.Path("state"), matter_port=matter_port, coaps_port=coaps_port)
+    ), state_dir, matter_port=matter_port, coaps_port=coaps_port)
 
     with open("pai-cert.pem", "rb") as f:
         matter_device.state.set_pai_cert(cryptography.x509.load_pem_x509_certificate(f.read()))

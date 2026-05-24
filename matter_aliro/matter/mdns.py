@@ -22,7 +22,7 @@ MATTER_COMMISSIONING_DNS_NAME = dns.name.Name(["_CM", "_sub", "_matterc", "_udp"
 
 
 class MDNS:
-    def __init__(self, device_state: device.DeviceState, port: int, coaps_port: int):
+    def __init__(self, device_state: "device.DeviceState", port: int, coaps_port: int):
         self.dns_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         self.dns_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.dns_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -143,7 +143,10 @@ class MDNS:
         if count < 8:
             asyncio.create_task(self.send_unsolicited_packets(count + 1, 2 ** count))
 
-    async def send_unsolicited_fabric_packets(self, fabric_index: int, count: int = 0, delay: typing.Optional[float] = None) -> None:
+    async def send_unsolicited_fabric_packets(
+            self, fabric_index: int, count: int = 0,
+            delay: typing.Optional[float] = None
+    ) -> None:
         loop = asyncio.get_event_loop()
 
         if delay is not None:
@@ -366,8 +369,10 @@ class MDNS:
                     resp_addr = ("ff02::fb", 5353, 0, source_addr[3])
                 await loop.sock_sendto(self.dns_socket, response_wire, resp_addr)
 
-    def add_srv_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
-                         additional: bool = False):
+    def add_srv_response(
+            self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
+            additional: bool = False
+    ):
         self.add_dns_response(query, response, dns.rrset.from_rdata(
             self.instance_dns_name,
             300,
@@ -381,8 +386,10 @@ class MDNS:
             )
         ), additional)
 
-    def add_fabric_srv_response(self, fabric: device.Fabric, query: typing.Optional[dns.message.Message],
-                                response: dns.message.Message, additional: bool = False):
+    def add_fabric_srv_response(
+            self, fabric: "device.Fabric", query: typing.Optional[dns.message.Message],
+            response: dns.message.Message, additional: bool = False
+    ):
         self.add_dns_response(query, response, dns.rrset.from_rdata(
             self.fabric_instance_dns_name(fabric),
             300,
@@ -396,7 +403,10 @@ class MDNS:
             )
         ), additional)
 
-    def add_coaps_srv_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message, additional: bool = False):
+    def add_coaps_srv_response(
+            self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
+            additional: bool = False
+    ):
         self.add_dns_response(query, response, dns.rrset.from_rdata(
             self.coaps_instance_dns_name,
             300,
@@ -410,8 +420,10 @@ class MDNS:
             )
         ), additional)
 
-    def add_addr_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
-                          scope_id: int, additional: bool = False):
+    def add_addr_response(
+            self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
+            scope_id: int, additional: bool = False
+    ):
         iface: typing.Optional[ifaddr.Adapter] = next(
             filter(lambda i: i.index == scope_id, ifaddr.get_adapters()), None)
         if not iface:
@@ -428,8 +440,10 @@ class MDNS:
                     )
                 ), additional)
 
-    def add_txt_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
-                         additional: bool = False):
+    def add_txt_response(
+            self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
+            additional: bool = False
+    ):
         d = {
             "D": str(self.device.discriminator),
             "VP": f"{self.device.meta.vendor_id}+{self.device.meta.product_id}",
@@ -453,8 +467,10 @@ class MDNS:
             )
         ), additional)
 
-    def add_fabric_txt_response(self, fabric: device.Fabric, query: typing.Optional[dns.message.Message],
-                                response: dns.message.Message, additional: bool = False):
+    def add_fabric_txt_response(
+            self, fabric: "device.Fabric", query: typing.Optional[dns.message.Message],
+            response: dns.message.Message, additional: bool = False
+    ):
         self.add_dns_response(query, response, dns.rrset.from_rdata(
             self.fabric_instance_dns_name(fabric),
             300,
@@ -470,7 +486,10 @@ class MDNS:
             )
         ), additional)
 
-    def add_coaps_txt_response(self, query: typing.Optional[dns.message.Message], response: dns.message.Message, additional: bool = False):
+    def add_coaps_txt_response(
+            self, query: typing.Optional[dns.message.Message], response: dns.message.Message,
+            additional: bool = False
+    ):
         self.add_dns_response(query, response, dns.rrset.from_rdata(
             self.coaps_instance_dns_name,
             300,
@@ -501,8 +520,10 @@ class MDNS:
         return out
 
     @staticmethod
-    def add_dns_response(query: typing.Optional[dns.message.Message], response: dns.message.Message,
-                         rrset: dns.rrset.RRset, additional: bool = False):
+    def add_dns_response(
+            query: typing.Optional[dns.message.Message], response: dns.message.Message,
+            rrset: dns.rrset.RRset, additional: bool = False
+    ):
         if not query:
             response.answer.append(rrset)
             return
@@ -542,7 +563,7 @@ class MDNS:
         return dns.name.Name([self.instance_name, "_aliro-coaps", "_udp", "local", ""])
 
     @staticmethod
-    def fabric_instance_dns_name(fabric: device.Fabric) -> dns.name.Name:
+    def fabric_instance_dns_name(fabric: "device.Fabric") -> dns.name.Name:
         return dns.name.Name([fabric.instance_name, "_matter", "_tcp", "local", ""])
 
     @property
@@ -566,7 +587,7 @@ class MDNS:
         return dns.name.Name([f"_D{self.device.meta.primary_device_type}", "_sub", "_matterc", "_udp", "local", ""])
 
     @staticmethod
-    def fabric_discriminator_dns_name(fabric: device.Fabric) -> dns.name.Name:
+    def fabric_discriminator_dns_name(fabric: "device.Fabric") -> dns.name.Name:
         return dns.name.Name([f"_I{fabric.compressed_fabric_id.hex().upper()}", "_sub", "_matter", "_tcp", "local", ""])
 
 

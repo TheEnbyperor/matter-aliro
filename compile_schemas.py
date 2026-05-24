@@ -229,7 +229,7 @@ class Renderer:
                 elm_type = f"typing.ForwardRef(\"{'.'.join(self.ns)}{'.' if self.ns else ''}{humps.pascalize(t.name)}\")", None
 
             if t.nullable:
-                elm_type = f"{elm_type} | tlv.Null", elm_type[1]
+                elm_type = f"{elm_type[0]} | tlv.Null", elm_type[1]
 
             return elm_type
         else:

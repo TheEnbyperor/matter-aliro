@@ -1214,7 +1214,7 @@ class GetCredentialStatusResponse(tlv.Structure):
 
 @dataclasses.dataclass
 class ClearCredentialRequest(tlv.Structure):
-  credential: ('typing.ForwardRef("CredentialStruct")', None) | tlv.Null
+  credential: typing.ForwardRef("CredentialStruct") | tlv.Null
 
   class Meta:
     order = "tag"
@@ -1731,7 +1731,7 @@ class KeyUsageFlagEnum(enum.IntEnum):
 @dataclasses.dataclass
 class Extension(tlv.ChoiceOf):
   variant: str
-  value: typing.Union[typing.ForwardRef("BasicConstraints"), typing.List[int], bytes, int]
+  value: typing.Union[bytes, typing.List[int], typing.ForwardRef("BasicConstraints"), int]
 
   class Meta:
     options = (

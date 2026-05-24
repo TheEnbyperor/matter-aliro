@@ -22,8 +22,8 @@ class CoAPDTLS:
 
         self.server.set_client_cert_types((dtls.WOLFSSL_CERT_TYPE_RPK,))
         self.server.set_server_cert_types((dtls.WOLFSSL_CERT_TYPE_RPK,))
-        self.server.set_certificate_file("server-cert.der", False)
-        self.server.set_private_key_file("server-key.der", False)
+        self.server.set_certificate_file("/data/server-cert.der", False)
+        self.server.set_private_key_file("/data/server-key.der", False)
         self.server.set_verify(dtls.WOLFSSL_VERIFY_PEER, self.verify_peer_certificate)
 
         self.devices = {}

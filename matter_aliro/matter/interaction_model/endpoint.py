@@ -31,7 +31,7 @@ class Endpoint:
     def add_server(self, c: cluster.Cluster):
         self.servers[c.cluster_id] = c
 
-    def register_im(self, endpoint_id: int, im: interaction_model.InteractionModel, device_state: device.DeviceState):
+    def register_im(self, endpoint_id: int, im: "interaction_model.InteractionModel", device_state: "device.DeviceState"):
         self.endpoint_id = endpoint_id
         self.interaction_model = im
         self.device_state = device_state

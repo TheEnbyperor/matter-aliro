@@ -300,7 +300,7 @@ class Cluster(metaclass=abc.ABCMeta):
                 elif isinstance(descriptor, Event):
                     self._events[descriptor.id] = descriptor
 
-    def register_im(self, endpoint_id: int, im: interaction_model.InteractionModel, device_state: device.DeviceState):
+    def register_im(self, endpoint_id: int, im: "interaction_model.InteractionModel", device_state: "device.DeviceState"):
         self._endpoint_id = endpoint_id
         self._interaction_model = im
         self._device_state = device_state
@@ -411,7 +411,7 @@ class Cluster(metaclass=abc.ABCMeta):
     def write_attribute_data(
             self, attribute_id: int, action: WriteAction, data,
             session: message.SessionContext
-    ) -> interaction_model.StatusCode:
+    ) -> "interaction_model.StatusCode":
         attr = self._attributes[attribute_id]
         if isinstance(attr, ListAttribute):
             if action == WriteAction.Replace:

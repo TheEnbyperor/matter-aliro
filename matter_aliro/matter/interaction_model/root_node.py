@@ -12,21 +12,20 @@ from .. import device, message, mdns, crypto
 from ..encoding import tlv
 from ..crypto import certs
 from ..encoding import protocol_messages
-from ..mdns import MDNS
 
 logger = logging.getLogger(__name__)
 
 class RootNode(endpoint.Endpoint):
     DEVICE_TYPES = {endpoint.DeviceType(id=0x0016, revision=4)}
 
-    def __init__(self, unique_id: str, state: device.DeviceState, layer: message.MessageLayer, dns: mdns.MDNS):
+    def __init__(self, unique_id: str, state: "device.DeviceState", layer: "message.MessageLayer", dns: "mdns.MDNS"):
         super().__init__(unique_id)
 
         self.access_control = AccessControl(state)
         self.basic_information = BasicInformation(state)
         self.general_commissioning = GeneralCommissioning(state, layer)
         self.network_commissioning = NetworkCommissioning()
-        self.administrator_commissioning = AdministratorCommissioning(state, layer)
+        self.administrator_commissioning = AdministratorCommissioning(state, layer, dns)
         self.operational_credentials = OperationalCredentials(state, layer, dns)
 
         self.add_server(self.access_control)
@@ -52,7 +51,7 @@ class AccessControl(cluster.Cluster):
     access_control_entry_changed = cluster.Event(0x0000, cluster.EventPriority.INFO, cluster.Privileges.Administer)
     access_control_extensions_changed = cluster.Event(0x0001, cluster.EventPriority.INFO, cluster.Privileges.Administer)
 
-    def __init__(self, device_state: device.DeviceState):
+    def __init__(self, device_state: "device.DeviceState"):
         super().__init__()
         self.device_state = device_state
 
@@ -239,7 +238,7 @@ class BasicInformation(cluster.Cluster):
 
     startup = cluster.Event(0x0000, cluster.EventPriority.CRITICAL, cluster.Privileges.View)
 
-    def __init__(self, device_state: device.DeviceState):
+    def __init__(self, device_state: "device.DeviceState"):
         super().__init__()
         self.device_state = device_state
 
@@ -339,7 +338,7 @@ class GeneralCommissioning(cluster.Cluster):
     set_regulatory_config = cluster.Command(0x0002, 0x0003, cluster.Privileges.Administer)
     commissioning_complete = cluster.Command(0x0004, 0x0005, cluster.Privileges.Administer)
 
-    def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer):
+    def __init__(self, device_state: "device.DeviceState", ml: "message.MessageLayer"):
         super().__init__()
         self.device_state = device_state
         self.message_layer = ml
@@ -489,7 +488,7 @@ class AdministratorCommissioning(cluster.Cluster):
     open_basic_commissioning_window = cluster.Command(0x0001, None, cluster.Privileges.Administer, t_timed=True)
     revoke_commissioning_window = cluster.Command(0x0002, None, cluster.Privileges.Administer, t_timed=True)
 
-    def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer, dns: mdns.MDNS):
+    def __init__(self, device_state: "device.DeviceState", ml: "message.MessageLayer", dns: "mdns.MDNS"):
         super().__init__()
         self.device_state = device_state
         self.message_layer = ml
@@ -612,7 +611,7 @@ class OperationalCredentials(cluster.Cluster):
     set_vid_verification_statement = cluster.Command(0x000C, None, cluster.Privileges.Administer)
     sign_vid_verification_request = cluster.Command(0x000D, 0x000E, cluster.Privileges.Administer)
 
-    def __init__(self, device_state: device.DeviceState, ml: message.MessageLayer, dns: mdns.MDNS):
+    def __init__(self, device_state: "device.DeviceState", ml: "message.MessageLayer", dns: "mdns.MDNS"):
         super().__init__()
         self.device_state = device_state
         self.message_layer = ml
@@ -691,7 +690,7 @@ class OperationalCredentials(cluster.Cluster):
     @certificate_chain_request.handler
     def handle_certificate_chain_request(
             self, data: protocol_messages.CertificateChainRequest
-    ) -> typing.Union[protocol_messages.CertificateChainResponse, interaction_model.StatusCode]:
+    ) -> typing.Union[protocol_messages.CertificateChainResponse, "interaction_model.StatusCode"]:
         if data.certificate_type == protocol_messages.CertificateTypeEnum.DACCertificate.value:
             return protocol_messages.CertificateChainResponse(
                 certificate=self.device_state.dac_cert.public_bytes(
@@ -857,7 +856,7 @@ class OperationalCredentials(cluster.Cluster):
     @add_trusted_root_certificate.handler
     def handle_add_trusted_root_certificate(
             self, data: protocol_messages.AddTrustedRootCertificate,
-    ) -> interaction_model.StatusCode:
+    ) -> "interaction_model.StatusCode":
         root_cert = protocol_messages.MatterCertificate.decode_from_bytes(data.root_ca_certificate)
         self.candidate_root_ca = root_cert
         return interaction_model.StatusCode.SUCCESS
