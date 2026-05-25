@@ -808,7 +808,6 @@ class NOCStruct(tlv.Structure):
   NOC: bytes = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
   ICAC: typing.Optional[bytes] = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
   VVSC: typing.Optional[bytes] = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
-  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
@@ -817,7 +816,6 @@ class NOCStruct(tlv.Structure):
       tlv.Field(tag=tlv.ContextSpecificTag(1), source="NOC", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(2), source="ICAC", optional=True),
       tlv.Field(tag=tlv.ContextSpecificTag(3), source="VVSC", optional=True),
-      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -828,7 +826,6 @@ class FabricDescriptorStruct(tlv.Structure):
   node_id: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 18446744073709551615})
   label: str = dataclasses.field(metadata={'min_len': 0, 'max_len': 32})
   vid_verification_statement: typing.Optional[bytes] = dataclasses.field(metadata={'min_len': 0, 'max_len': 85})
-  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
@@ -840,7 +837,6 @@ class FabricDescriptorStruct(tlv.Structure):
       tlv.Field(tag=tlv.ContextSpecificTag(4), source="node_id", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(5), source="label", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(6), source="vid_verification_statement", optional=True),
-      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 class CommissioningWindowStatusEnum(enum.IntEnum):
@@ -960,7 +956,6 @@ class AccessControlEntryStruct(tlv.Structure):
   auth_mode: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 255})
   subjects: typing.List[int] | tlv.Null = dataclasses.field(metadata={'is_list': False, 'base_meta': {'signed': False, 'min': 0, 'max': 18446744073709551615}})
   targets: typing.List[typing.ForwardRef("AccessControlTargetStruct")] | tlv.Null = dataclasses.field(metadata={'is_list': False})
-  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
@@ -970,20 +965,17 @@ class AccessControlEntryStruct(tlv.Structure):
       tlv.Field(tag=tlv.ContextSpecificTag(2), source="auth_mode", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(3), source="subjects", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(4), source="targets", optional=False),
-      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 @dataclasses.dataclass
 class AccessControlExtensionStruct(tlv.Structure):
   data: bytes = dataclasses.field(metadata={'min_len': 0, 'max_len': 128})
-  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
     extensible = False
     fields = (
       tlv.Field(tag=tlv.ContextSpecificTag(1), source="data", optional=False),
-      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 class IdentifyTypeEnumEnum(enum.IntEnum):
@@ -1743,7 +1735,7 @@ class KeyUsageFlagEnum(enum.IntEnum):
 @dataclasses.dataclass
 class Extension(tlv.ChoiceOf):
   variant: str
-  value: typing.Union[typing.List[int], int, bytes, typing.ForwardRef("BasicConstraints")]
+  value: typing.Union[typing.List[int], bytes, typing.ForwardRef("BasicConstraints"), int]
 
   class Meta:
     options = (

@@ -1333,16 +1333,23 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
 
             data = c.invoke_command(command_id, data, session)
             if data[0] is None:
+                if isinstance(data[1], tuple):
+                    status = self.StatusIB(
+                        status=data[1][0].value,
+                        cluster_status=data[1][1].value,
+                    )
+                else:
+                    status = self.StatusIB(
+                        status=data[1].value,
+                        cluster_status=data[1]
+                    )
                 return [self.CommandStatusIB(
                     path=self.CommandPathIB(
                         endpoint=endpoint_id,
                         cluster=c.cluster_id,
                         command=command_id,
                     ),
-                    status=self.StatusIB(
-                        status=data[1].value,
-                        cluster_status=0
-                    ),
+                    status=status,
                     command_ref=None
                 )]
             else:

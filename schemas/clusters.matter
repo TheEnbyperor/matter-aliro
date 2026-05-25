@@ -151,8 +151,7 @@ AddTrustedRootCertificate => STRUCTURE [ tag-order ] {
 NOCStruct => STRUCTURE [ tag-order ] {
 	NOC [1] : OCTET STRING [ length 0..400 ],
 	ICAC [2, optional] : OCTET STRING [ length 0..400 ],
-	VVSC [3, optional] : OCTET STRING [ length 0..400 ],
-	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
+	VVSC [3, optional] : OCTET STRING [ length 0..400 ]
 }
 
 FabricDescriptorStruct => STRUCTURE [ tag-order ] {
@@ -161,8 +160,7 @@ FabricDescriptorStruct => STRUCTURE [ tag-order ] {
 	FabricID [3] : UNSIGNED INTEGER [ range 64-bits ],
 	NodeID [4] : UNSIGNED INTEGER [ range 64-bits ],
 	Label [5] : STRING [ length 0..32 ],
-	VIDVerificationStatement [6, optional] : OCTET STRING [ length 0..85 ],
-	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
+	VIDVerificationStatement [6, optional] : OCTET STRING [ length 0..85 ]
 }
 
 CommissioningWindowStatus => UNSIGNED INTEGER [ range 8-bits ] {
@@ -233,13 +231,11 @@ AccessControlEntryStruct => STRUCTURE [ tag-order ] {
 	Privilege [1] : AccessControlEntryPrivilegeEnum,
 	AuthMode [2] : AccessControlEntryAuthModeEnum,
 	Subjects [3] : ARRAY [nullable] OF subject-id,
-	Targets [4] : ARRAY [nullable] OF AccessControlTargetStruct,
-	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
+	Targets [4] : ARRAY [nullable] OF AccessControlTargetStruct
 }
 
 AccessControlExtensionStruct => STRUCTURE [ tag-order ] {
-	Data [1] : OCTET STRING [ length 0..128 ],
-	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
+	Data [1] : OCTET STRING [ length 0..128 ]
 }
 
 IdentifyTypeEnum => UNSIGNED INTEGER [ range 8-bits ] {

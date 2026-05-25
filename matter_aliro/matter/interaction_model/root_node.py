@@ -96,7 +96,6 @@ class AccessControl(cluster.Cluster):
                     endpoint=t.endpoint if t.endpoint is not None else tlv.Null(),
                     device_type=t.device_type if t.device_type is not None else tlv.Null(),
                 ) for t in entry.targets] or tlv.Null(),
-                fabric_index=entry.fabric_index,
             ))
 
         return out
@@ -300,11 +299,11 @@ class BasicInformation(cluster.Cluster):
 
     @serial_number.reader
     def read_serial_number(self):
-        return self.device_state.meta.serial_number
+        return self.device_state.meta.serial_number or None
 
     @unique_id.reader
     def read_unique_id(self):
-        return self.device_state.meta.unique_id
+        return self.device_state.meta.unique_id or None
 
     @capability_minima.reader
     def read_capability_minima(self):
@@ -532,10 +531,11 @@ class AdministratorCommissioning(cluster.Cluster):
         return self.current_admin_vendor_id
 
     @open_commissioning_window.handler
-    def handle_open_commissioning_window(self, data: protocol_messages.OpenCommissioningWindow,
-                                         session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+    def handle_open_commissioning_window(
+            self, data: protocol_messages.OpenCommissioningWindow, session: message.SessionContext
+    ) -> typing.Tuple["interaction_model.StatusCode", protocol_messages.CommissioningWindowStatusCodeEnum]:
         if self.device_state.in_commissioning_mode or self.enhanced_commissioning or self.basic_commissioning:
-            return protocol_messages.CommissioningWindowStatusCodeEnum.Busy
+            return interaction_model.StatusCode.FAILURE, protocol_messages.CommissioningWindowStatusCodeEnum.Busy
 
         asyncio.create_task(self.cancel_commissioning(data.commissioning_timeout))
         self.message_layer.secure_channel.pbkdf_params = crypto.CryptoPBKDFParameterSet(
@@ -552,13 +552,14 @@ class AdministratorCommissioning(cluster.Cluster):
         self.increment_data_version()
         self.attributes_changed([self.window_status, self.admin_fabric_index, self.admin_vendor_id])
         asyncio.create_task(self.mdns.send_unsolicited_packets())
-        return protocol_messages.CommissioningWindowStatusCodeEnum.Success
+        return interaction_model.StatusCode.SUCCESS, protocol_messages.CommissioningWindowStatusCodeEnum.Success
 
     @open_basic_commissioning_window.handler
-    def handle_open_basic_commissioning_window(self, data: protocol_messages.OpenBasicCommissioningWindow,
-                                               session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+    def handle_open_basic_commissioning_window(
+            self, data: protocol_messages.OpenBasicCommissioningWindow, session: message.SessionContext
+    ) -> typing.Tuple["interaction_model.StatusCode", protocol_messages.CommissioningWindowStatusCodeEnum]:
         if self.device_state.in_commissioning_mode or self.enhanced_commissioning or self.basic_commissioning:
-            return protocol_messages.CommissioningWindowStatusCodeEnum.Busy
+            return interaction_model.StatusCode.FAILURE, protocol_messages.CommissioningWindowStatusCodeEnum.Busy
 
         asyncio.create_task(self.cancel_commissioning(data.commissioning_timeout))
         self.basic_commissioning = True
@@ -568,14 +569,14 @@ class AdministratorCommissioning(cluster.Cluster):
         self.increment_data_version()
         self.attributes_changed([self.window_status, self.admin_fabric_index, self.admin_vendor_id])
         asyncio.create_task(self.mdns.send_unsolicited_packets())
-        return protocol_messages.CommissioningWindowStatusCodeEnum.Success
+        return interaction_model.StatusCode.SUCCESS, protocol_messages.CommissioningWindowStatusCodeEnum.Success
 
     @revoke_commissioning_window.handler
-    def handle_revoke_commissioning_window(self) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+    def handle_revoke_commissioning_window(self) -> typing.Tuple["interaction_model.StatusCode", protocol_messages.CommissioningWindowStatusCodeEnum]:
         if not self.enhanced_commissioning and not self.basic_commissioning:
-            return protocol_messages.CommissioningWindowStatusCodeEnum.WindowNotOpen
+            return interaction_model.StatusCode.FAILURE, protocol_messages.CommissioningWindowStatusCodeEnum.WindowNotOpen
         asyncio.create_task(self.cancel_commissioning())
-        return protocol_messages.CommissioningWindowStatusCodeEnum.Success
+        return interaction_model.StatusCode.SUCCESS, protocol_messages.CommissioningWindowStatusCodeEnum.Success
 
     async def cancel_commissioning(self, delay: typing.Optional[float] = None):
         if delay is not None:
@@ -645,7 +646,6 @@ class OperationalCredentials(cluster.Cluster):
             NOC=fabric.noc,
             ICAC=fabric.icac,
             VVSC=None,
-            fabric_index=idx,
         ) for idx, fabric in enumerate(self.device_state.fabrics.values())]
 
     @fabrics.reader
@@ -660,7 +660,6 @@ class OperationalCredentials(cluster.Cluster):
             node_id=fabric.node_id,
             label=fabric.label,
             vid_verification_statement=None,
-            fabric_index=idx,
         ) for idx, fabric in enumerate(self.device_state.fabrics.values())]
 
     @supported_fabrics.reader

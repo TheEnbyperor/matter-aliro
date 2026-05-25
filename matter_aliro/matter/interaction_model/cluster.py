@@ -60,6 +60,11 @@ class Attribute:
     def writer(self, setter):
         self._setter = setter
 
+    def supported(self) -> bool:
+        if self._getter is None and self._setter is None:
+            return False
+        return True
+
     def read_supported(self) -> bool:
         if self._getter is None:
             return False
@@ -216,6 +221,9 @@ class Command:
     def handler(self, handler):
         self._exec = handler
 
+    def supported(self):
+        return self._exec is not None
+
     def __call__(self, obj, data, session: message.SessionContext):
         if self._exec is None:
             raise NotImplementedError(f"Handler not set on command {self.id:04X}")
@@ -357,7 +365,7 @@ class Cluster(metaclass=abc.ABCMeta):
 
     @attribute_list.reader
     def read_attribute_list(self) -> typing.List[encoding.TLVUInt]:
-        return [encoding.TLVUInt(v) for v in self._attributes.keys()]
+        return [encoding.TLVUInt(k) for k, v in self._attributes.items() if v.supported()]
 
     @event_list.reader
     def read_event_list(self) -> typing.List[encoding.TLVUInt]:
@@ -365,20 +373,20 @@ class Cluster(metaclass=abc.ABCMeta):
 
     @accepted_command_list.reader
     def read_accepted_command_list(self) -> typing.List[encoding.TLVUInt]:
-        return [encoding.TLVUInt(v) for v in self._commands.keys()]
+        return [encoding.TLVUInt(k) for k, v in self._commands.items() if v.supported()]
 
     @generated_command_list.reader
     def read_generated_command_list(self) -> typing.List[encoding.TLVUInt]:
         return [encoding.TLVUInt(v) for v in self._response_commands]
 
     def get_attributes(self) -> typing.List[Attribute]:
-        return list(self._attributes.values())
+        return [attr for attr in self._attributes.values() if attr.supported()]
 
     def get_attribute(self, attribute_id: int) -> typing.Optional[Attribute]:
         return self._attributes.get(attribute_id)
 
     def get_commands(self) -> typing.List[Command]:
-        return list(self._commands.values())
+        return [cmd for cmd in self._commands.values() if cmd.supported()]
 
     def get_command(self, command_id: int) -> typing.Optional[Command]:
         return self._commands.get(command_id)

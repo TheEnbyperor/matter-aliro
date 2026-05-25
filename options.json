@@ -1,0 +1,5 @@
+{
+  "matter_port": 5451,
+  "coaps_port": 5452,
+  "locks": []
+}
