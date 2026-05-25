@@ -16,7 +16,7 @@ PRODUCT_ID_OID = cryptography.x509.oid.ObjectIdentifier("1.3.6.1.4.1.37244.2.2")
 
 def main():
     source_dir = pathlib.Path(os.path.dirname(__file__))
-    certs_dir = source_dir / "certs"
+    certs_dir = pathlib.Path("/data/certs")
 
     if not certs_dir.is_dir():
         certs_dir.mkdir(exist_ok=True)

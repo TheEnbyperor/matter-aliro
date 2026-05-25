@@ -942,7 +942,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 if attribute_id is None:
                     attrs = cl.get_attributes()
                 else:
-                    if a := cl.get_attribute(attribute_id):
+                    if a := cl.get_attribute(attribute_id) is not None:
                         attrs = [a]
                     else:
                         attrs = []
@@ -966,21 +966,20 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                         a.id, list_index, session,
                         register_subscription=register_subscription if subscription else None
                     )
-                    if data:
-                        attribute_reports.append(self.AttributeDataIB(
-                            data_version=cl.data_version,
-                            path=self.AttributePathIB(
-                                enable_tag_compression=None,
-                                node=None,
-                                endpoint=e,
-                                cluster=c,
-                                attribute=a.id,
-                                list_index=list_index,
-                                wildcard_path_flags=None,
-                                wildcard_filter_configuration_version=None,
-                            ),
-                            data=data
-                        ))
+                    attribute_reports.append(self.AttributeDataIB(
+                        data_version=cl.data_version,
+                        path=self.AttributePathIB(
+                            enable_tag_compression=None,
+                            node=None,
+                            endpoint=e,
+                            cluster=c,
+                            attribute=a.id,
+                            list_index=list_index,
+                            wildcard_path_flags=None,
+                            wildcard_filter_configuration_version=None,
+                        ),
+                        data=data
+                    ))
 
             return attribute_reports
 

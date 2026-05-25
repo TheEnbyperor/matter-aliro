@@ -60,7 +60,7 @@ class ContentInfo:
 
 def main():
     source_dir = pathlib.Path(os.path.dirname(__file__))
-    certs_dir = source_dir / "certs"
+    certs_dir = pathlib.Path("/data/certs")
 
     if not certs_dir.is_dir():
         certs_dir.mkdir(exist_ok=True)
