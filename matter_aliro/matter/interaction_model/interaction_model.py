@@ -942,7 +942,7 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                 if attribute_id is None:
                     attrs = cl.get_attributes()
                 else:
-                    if a := cl.get_attribute(attribute_id) is not None:
+                    if (a := cl.get_attribute(attribute_id)) is not None:
                         attrs = [a]
                     else:
                         attrs = []
@@ -954,13 +954,13 @@ class InteractionModel(protocol_messages.ImProtocol, protocol.Protocol):
                     if not a.read_supported():
                         continue
 
-                    def register_subscription(a):
+                    def register_subscription(attr):
                         ak = AttributeKey(
                             endpoint_id=e,
                             cluster_id=c,
-                            attribute_id=a.id,
+                            attribute_id=attr.id,
                         )
-                        subscription.add_attribute(ak, cl, a)
+                        subscription.add_attribute(ak, cl, attr)
 
                     data = cl.get_attribute_data(
                         a.id, list_index, session,
