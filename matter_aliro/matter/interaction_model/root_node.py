@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 import typing
+import random
 import cryptography.x509
 import cryptography.hazmat.primitives.serialization
 import cryptography.hazmat.primitives.hashes
@@ -546,6 +547,7 @@ class AdministratorCommissioning(cluster.Cluster):
             data.pake_passcode_verifier)
         self.enhanced_commissioning = True
         self.device_state.in_commissioning_mode = True
+        self.mdns.instance_name = f"{random.randint(0, 2 ** 64 - 1):016X}"
         self.device_state.discriminator = data.discriminator
         self.current_admin_fabric_index = session.local_fabric_index
         self.current_admin_vendor_id = self.device_state.fabrics[session.local_fabric_index].admin_vendor_id
@@ -564,6 +566,7 @@ class AdministratorCommissioning(cluster.Cluster):
         asyncio.create_task(self.cancel_commissioning(data.commissioning_timeout))
         self.basic_commissioning = True
         self.device_state.in_commissioning_mode = True
+        self.mdns.instance_name = f"{random.randint(0, 2 ** 64 - 1):016X}"
         self.current_admin_fabric_index = session.local_fabric_index
         self.current_admin_vendor_id = self.device_state.fabrics[session.local_fabric_index].admin_vendor_id
         self.increment_data_version()
@@ -589,6 +592,7 @@ class AdministratorCommissioning(cluster.Cluster):
         self.message_layer.secure_channel.pake_values_responder = self.message_layer.secure_channel.basic_pake_values_responder
         self.device_state.in_commissioning_mode = False
         self.device_state.discriminator = self.device_state.basic_discriminator
+        self.mdns.instance_name = self.mdns.base_instance_name
         self.basic_commissioning = False
         self.enhanced_commissioning = False
         self.current_admin_fabric_index = None

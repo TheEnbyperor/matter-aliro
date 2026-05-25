@@ -1,5 +1,8 @@
 {
   "matter_port": 5451,
   "coaps_port": 5452,
-  "locks": []
+  "locks": [{
+    "id": "bug",
+    "frontends": []
+  }]
 }

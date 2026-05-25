@@ -30,7 +30,8 @@ class MDNS:
         self.dns_socket.setblocking(False)
         self.add_dns_socket_to_multicast_group()
 
-        self.instance_name = f"{random.randint(0, 2 ** 64 - 1):016X}"
+        self.base_instance_name = f"{random.randint(0, 2 ** 64 - 1):016X}"
+        self.instance_name = self.base_instance_name
         self.host_name = f"{uuid.getnode():012X}"
         self.port = port
         self.coaps_port = coaps_port
@@ -578,7 +579,7 @@ class MDNS:
 
     @property
     def coaps_instance_dns_name(self) -> dns.name.Name:
-        return dns.name.Name([self.instance_name, "_aliro-coaps", "_udp", "local", ""])
+        return dns.name.Name([self.base_instance_name, "_aliro-coaps", "_udp", "local", ""])
 
     @staticmethod
     def fabric_instance_dns_name(fabric: "device.Fabric") -> dns.name.Name:
