@@ -100,3 +100,18 @@ matter-certificate => STRUCTURE [ tag-order ] {
 	extensions [10] : LIST [ length 1.. ] OF extension,
 	signature [11] : ec-signature
 }
+
+certification-elements => STRUCTURE [ tag-order ] {
+	format_version [0] : UNSIGNED INTEGER [ range 16-bits ],
+	vendor_id [1] : UNSIGNED INTEGER [ range 16-bits ],
+	product_id_array [2] : ARRAY [ length 1..100 ] OF UNSIGNED INTEGER [ range 16-bits ],
+	device_type_id [3] : UNSIGNED INTEGER [ range 32-bits ],
+	certificate_id [4] : STRING [ length 19 ],
+	security_level [5] : UNSIGNED INTEGER [ range 8-bits ],
+	security_information [6] : UNSIGNED INTEGER [ range 16-bits ],
+	version_number [7] : UNSIGNED INTEGER [ range 16-bits ],
+	certification_type [8] : UNSIGNED INTEGER [ range 8-bits ],
+	dac_origin_vendor_id [9, optional] : UNSIGNED INTEGER [ range 16-bits ],
+	dac_origin_product_id [10, optional] : UNSIGNED INTEGER [ range 16-bits ],
+	authorized_paa_list [11, optional] : ARRAY [ length 1..10 ] OF OCTET STRING [ length 20 ]
+}

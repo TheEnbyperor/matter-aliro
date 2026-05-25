@@ -1,5 +1,6 @@
 schemas/
 state/
+certs/
 venv/
 .gitignore
 compile_schemas.py

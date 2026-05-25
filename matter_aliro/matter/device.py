@@ -107,6 +107,7 @@ class DeviceState:
         self.acl: typing.List[acl.ACLEntry] = []
         self.fabrics: typing.Dict[int, Fabric] = {}
         self.in_commissioning_mode = False
+        self.certification_declaration: typing.Optional[bytes] = None
         self.pai_cert: typing.Optional[cryptography.x509.Certificate] = None
         self.dac_cert: typing.Optional[cryptography.x509.Certificate] = None
         self.dac_key: typing.Optional[cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey] = None
@@ -267,6 +268,9 @@ class DeviceState:
         state_file = self.state_dir / f"state_{name}.json"
         with open(state_file, "w") as f:
             json.dump(state, f, indent=2)
+
+    def set_certification_declaration(self, cd: bytes):
+        self.certification_declaration = cd
 
     def set_pai_cert(self, cert: cryptography.x509.Certificate):
         self.pai_cert = cert

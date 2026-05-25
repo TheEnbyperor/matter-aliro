@@ -20,11 +20,13 @@ COPY requirements.txt /app
 RUN python3 -m venv /venv && /venv/bin/python3 -m pip install -Ur /app/requirements.txt
 
 COPY run.sh /app
+COPY cd-signer-cert.pem /app
+COPY cd-signer-key.pem /app
+COPY paa-cert.pem /app
+COPY paa-key.pem /app
+COPY make_cd.py /app
+COPY make_pai_dac.py /app
 COPY matter_aliro /app/matter_aliro
-COPY dac-cert.pem /app
-COPY dac-priv.pem /app
-COPY pai-cert.pem /app
-COPY pai-priv.pem /app
 RUN chmod a+x /app/run.sh
 WORKDIR /app
 

@@ -15,15 +15,15 @@ class Device:
         return f"Device({':'.join(f'{b:02X}' for b in self.spki_fingerprint)})"
 
 class CoAPDTLS:
-    def __init__(self, mman, loop, bind):
+    def __init__(self, mman, loop, bind, server_cert, server_key):
         self.mman = mman
         self.loop = loop
         self.server = dtls.DTLSServer(bind)
 
         self.server.set_client_cert_types((dtls.WOLFSSL_CERT_TYPE_RPK,))
         self.server.set_server_cert_types((dtls.WOLFSSL_CERT_TYPE_RPK,))
-        self.server.set_certificate_file("/data/server-cert.der", False)
-        self.server.set_private_key_file("/data/server-key.der", False)
+        self.server.set_certificate_file(server_cert, False)
+        self.server.set_private_key_file(server_key, False)
         self.server.set_verify(dtls.WOLFSSL_VERIFY_PEER, self.verify_peer_certificate)
 
         self.devices = {}

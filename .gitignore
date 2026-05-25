@@ -1,5 +1,4 @@
 venv/
 state/
 __pycache__
-server-cert.der
-server-key.der
+certs/

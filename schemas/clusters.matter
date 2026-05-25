@@ -125,11 +125,13 @@ AddNOC => STRUCTURE [ tag-order ] {
 
 UpdateNOC => STRUCTURE [ tag-order ] {
 	NOCValue [0] : OCTET STRING [ length 0..400 ],
-	ICACValue [1, optional] : OCTET STRING [ length 0..400 ]
+	ICACValue [1, optional] : OCTET STRING [ length 0..400 ],
+	FabricIndex [254, optional] : UNSIGNED INTEGER [ range 1..254 ]
 }
 
 UpdateFabricLabel => STRUCTURE [ tag-order ] {
-	Label [0] : STRING [ length 0..32 ]
+	Label [0] : STRING [ length 0..32 ],
+	FabricIndex [254, optional] : UNSIGNED INTEGER [ range 1..254 ]
 }
 
 RemoveFabric => STRUCTURE [ tag-order ] {
@@ -149,7 +151,8 @@ AddTrustedRootCertificate => STRUCTURE [ tag-order ] {
 NOCStruct => STRUCTURE [ tag-order ] {
 	NOC [1] : OCTET STRING [ length 0..400 ],
 	ICAC [2, optional] : OCTET STRING [ length 0..400 ],
-	VVSC [3, optional] : OCTET STRING [ length 0..400 ]
+	VVSC [3, optional] : OCTET STRING [ length 0..400 ],
+	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
 }
 
 FabricDescriptorStruct => STRUCTURE [ tag-order ] {
@@ -158,7 +161,8 @@ FabricDescriptorStruct => STRUCTURE [ tag-order ] {
 	FabricID [3] : UNSIGNED INTEGER [ range 64-bits ],
 	NodeID [4] : UNSIGNED INTEGER [ range 64-bits ],
 	Label [5] : STRING [ length 0..32 ],
-	VIDVerificationStatement [6, optional] : OCTET STRING [ length 0..85 ]
+	VIDVerificationStatement [6, optional] : OCTET STRING [ length 0..85 ],
+	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
 }
 
 CommissioningWindowStatus => UNSIGNED INTEGER [ range 8-bits ] {
@@ -229,11 +233,13 @@ AccessControlEntryStruct => STRUCTURE [ tag-order ] {
 	Privilege [1] : AccessControlEntryPrivilegeEnum,
 	AuthMode [2] : AccessControlEntryAuthModeEnum,
 	Subjects [3] : ARRAY [nullable] OF subject-id,
-	Targets [4] : ARRAY [nullable] OF AccessControlTargetStruct
+	Targets [4] : ARRAY [nullable] OF AccessControlTargetStruct,
+	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
 }
 
 AccessControlExtensionStruct => STRUCTURE [ tag-order ] {
-	Data [1] : OCTET STRING [ length 0..128 ]
+	Data [1] : OCTET STRING [ length 0..128 ],
+	FabricIndex [254] : UNSIGNED INTEGER [ range 1..254 ]
 }
 
 IdentifyTypeEnum => UNSIGNED INTEGER [ range 8-bits ] {

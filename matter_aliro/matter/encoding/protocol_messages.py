@@ -742,6 +742,7 @@ class AddNOC(tlv.Structure):
 class UpdateNOC(tlv.Structure):
   noc_value: bytes = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
   icac_value: typing.Optional[bytes] = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
+  fabric_index: typing.Optional[int] = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
@@ -749,17 +750,20 @@ class UpdateNOC(tlv.Structure):
     fields = (
       tlv.Field(tag=tlv.ContextSpecificTag(0), source="noc_value", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(1), source="icac_value", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=True),
     )
 
 @dataclasses.dataclass
 class UpdateFabricLabel(tlv.Structure):
   label: str = dataclasses.field(metadata={'min_len': 0, 'max_len': 32})
+  fabric_index: typing.Optional[int] = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
     extensible = False
     fields = (
       tlv.Field(tag=tlv.ContextSpecificTag(0), source="label", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=True),
     )
 
 @dataclasses.dataclass
@@ -804,6 +808,7 @@ class NOCStruct(tlv.Structure):
   NOC: bytes = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
   ICAC: typing.Optional[bytes] = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
   VVSC: typing.Optional[bytes] = dataclasses.field(metadata={'min_len': 0, 'max_len': 400})
+  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
@@ -812,6 +817,7 @@ class NOCStruct(tlv.Structure):
       tlv.Field(tag=tlv.ContextSpecificTag(1), source="NOC", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(2), source="ICAC", optional=True),
       tlv.Field(tag=tlv.ContextSpecificTag(3), source="VVSC", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 @dataclasses.dataclass
@@ -822,6 +828,7 @@ class FabricDescriptorStruct(tlv.Structure):
   node_id: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 18446744073709551615})
   label: str = dataclasses.field(metadata={'min_len': 0, 'max_len': 32})
   vid_verification_statement: typing.Optional[bytes] = dataclasses.field(metadata={'min_len': 0, 'max_len': 85})
+  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
@@ -833,6 +840,7 @@ class FabricDescriptorStruct(tlv.Structure):
       tlv.Field(tag=tlv.ContextSpecificTag(4), source="node_id", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(5), source="label", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(6), source="vid_verification_statement", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 class CommissioningWindowStatusEnum(enum.IntEnum):
@@ -952,6 +960,7 @@ class AccessControlEntryStruct(tlv.Structure):
   auth_mode: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 255})
   subjects: typing.List[int] | tlv.Null = dataclasses.field(metadata={'is_list': False, 'base_meta': {'signed': False, 'min': 0, 'max': 18446744073709551615}})
   targets: typing.List[typing.ForwardRef("AccessControlTargetStruct")] | tlv.Null = dataclasses.field(metadata={'is_list': False})
+  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
@@ -961,17 +970,20 @@ class AccessControlEntryStruct(tlv.Structure):
       tlv.Field(tag=tlv.ContextSpecificTag(2), source="auth_mode", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(3), source="subjects", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(4), source="targets", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 @dataclasses.dataclass
 class AccessControlExtensionStruct(tlv.Structure):
   data: bytes = dataclasses.field(metadata={'min_len': 0, 'max_len': 128})
+  fabric_index: int = dataclasses.field(metadata={'signed': False, 'min': 1, 'max': 254})
 
   class Meta:
     order = "tag"
     extensible = False
     fields = (
       tlv.Field(tag=tlv.ContextSpecificTag(1), source="data", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(254), source="fabric_index", optional=False),
     )
 
 class IdentifyTypeEnumEnum(enum.IntEnum):
@@ -1654,7 +1666,7 @@ class SignatureAlgorithmEnum(enum.IntEnum):
 @dataclasses.dataclass
 class DnAttribute(tlv.ChoiceOf):
   variant: str
-  value: typing.Union[str, int]
+  value: typing.Union[int, str]
 
   class Meta:
     options = (
@@ -1731,7 +1743,7 @@ class KeyUsageFlagEnum(enum.IntEnum):
 @dataclasses.dataclass
 class Extension(tlv.ChoiceOf):
   variant: str
-  value: typing.Union[bytes, typing.List[int], typing.ForwardRef("BasicConstraints"), int]
+  value: typing.Union[typing.List[int], int, bytes, typing.ForwardRef("BasicConstraints")]
 
   class Meta:
     options = (
@@ -1772,6 +1784,39 @@ class MatterCertificate(tlv.Structure):
       tlv.Field(tag=tlv.ContextSpecificTag(9), source="ec_pub_key", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(10), source="extensions", optional=False),
       tlv.Field(tag=tlv.ContextSpecificTag(11), source="signature", optional=False),
+    )
+
+@dataclasses.dataclass
+class CertificationElements(tlv.Structure):
+  format_version: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  vendor_id: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  product_id_array: typing.List[int] = dataclasses.field(metadata={'is_list': False, 'base_meta': {'signed': False, 'min': 0, 'max': 65535}, 'min_len': 1, 'max_len': 100})
+  device_type_id: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 4294967295})
+  certificate_id: str = dataclasses.field(metadata={'min_len': 19, 'max_len': 19})
+  security_level: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 255})
+  security_information: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  version_number: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  certification_type: int = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 255})
+  dac_origin_vendor_id: typing.Optional[int] = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  dac_origin_product_id: typing.Optional[int] = dataclasses.field(metadata={'signed': False, 'min': 0, 'max': 65535})
+  authorized_paa_list: typing.Optional[typing.List[bytes]] = dataclasses.field(metadata={'is_list': False, 'base_meta': {'min_len': 20, 'max_len': 20}, 'min_len': 1, 'max_len': 10})
+
+  class Meta:
+    order = "tag"
+    extensible = False
+    fields = (
+      tlv.Field(tag=tlv.ContextSpecificTag(0), source="format_version", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(1), source="vendor_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(2), source="product_id_array", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(3), source="device_type_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(4), source="certificate_id", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(5), source="security_level", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(6), source="security_information", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(7), source="version_number", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(8), source="certification_type", optional=False),
+      tlv.Field(tag=tlv.ContextSpecificTag(9), source="dac_origin_vendor_id", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(10), source="dac_origin_product_id", optional=True),
+      tlv.Field(tag=tlv.ContextSpecificTag(11), source="authorized_paa_list", optional=True),
     )
 
 

@@ -122,13 +122,13 @@ class MatterFrame(encoding.Encodable, encoding.Decodable):
             destination_node_id = None
             destination_group_id = None
         elif message_flags.destination_node_id_size == 1:
-            destination_node_id = None
-            destination_group_id = data[i:i + 2]
-            i += 2
-        elif message_flags.destination_node_id_size == 2:
             destination_node_id = data[i:i + 8]
             destination_group_id = None
             i += 8
+        elif message_flags.destination_node_id_size == 2:
+            destination_node_id = None
+            destination_group_id = data[i:i + 2]
+            i += 2
         else:
             raise ValueError(f"Unsupported destination node ID size")
 

@@ -2,10 +2,14 @@ name: "Matter Aliro Lock"
 version: "0.0.1"
 slug: "matter_aliro_lock"
 host_network: true
-stage: experimental
+stage: "experimental"
 options:
   matter_port: 5451
   coaps_port: 5684
 schema:
-  matter_port: int(1,65535)
-  coaps_port: int(1,65535)
+  matter_port: "int(1,65535)"
+  coaps_port: "int(1,65535)"
+  locks:
+    - id: "str"
+      frontends:
+        - "match(^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$)"

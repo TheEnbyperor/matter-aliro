@@ -15,6 +15,7 @@ from ..encoding import protocol_messages
 
 logger = logging.getLogger(__name__)
 
+
 class RootNode(endpoint.Endpoint):
     DEVICE_TYPES = {endpoint.DeviceType(id=0x0016, revision=4)}
 
@@ -37,6 +38,7 @@ class RootNode(endpoint.Endpoint):
         self.add_server(self.operational_credentials)
         # TODO: group key management 0x003F
 
+
 class AccessControl(cluster.Cluster):
     cluster_id = 0x001F
     cluster_revision_number = 2
@@ -44,9 +46,15 @@ class AccessControl(cluster.Cluster):
 
     acl = cluster.ListAttribute(0x0000, cluster.RWAccess.ReadWrite, cluster.Privileges.Administer)
     extension = cluster.ListAttribute(0x0001, cluster.RWAccess.ReadWrite, cluster.Privileges.Administer)
-    subjects_per_access_control_entry = cluster.Attribute(0x0002, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
-    targets_per_access_control_entry = cluster.Attribute(0x0003, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
-    access_control_entries_per_fabric = cluster.Attribute(0x0004, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True)
+    subjects_per_access_control_entry = cluster.Attribute(
+        0x0002, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True
+    )
+    targets_per_access_control_entry = cluster.Attribute(
+        0x0003, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True
+    )
+    access_control_entries_per_fabric = cluster.Attribute(
+        0x0004, cluster.RWAccess.Read, cluster.Privileges.View, f_fixed=True
+    )
 
     access_control_entry_changed = cluster.Event(0x0000, cluster.EventPriority.INFO, cluster.Privileges.Administer)
     access_control_extensions_changed = cluster.Event(0x0001, cluster.EventPriority.INFO, cluster.Privileges.Administer)
@@ -88,12 +96,14 @@ class AccessControl(cluster.Cluster):
                     endpoint=t.endpoint if t.endpoint is not None else tlv.Null(),
                     device_type=t.device_type if t.device_type is not None else tlv.Null(),
                 ) for t in entry.targets] or tlv.Null(),
+                fabric_index=entry.fabric_index,
             ))
 
         return out
 
     @acl.list_replacer
-    def replace_acl(self, data: typing.List[protocol_messages.AccessControlEntryStruct], session: message.SessionContext):
+    def replace_acl(self, data: typing.List[protocol_messages.AccessControlEntryStruct],
+                    session: message.SessionContext):
         new_entries = []
         for entry in data:
             if entry.privilege == protocol_messages.AccessControlEntryPrivilegeEnumEnum.Administer.value:
@@ -127,7 +137,8 @@ class AccessControl(cluster.Cluster):
                 ) for t in entry.targets] if entry.targets else [],
             ))
 
-        self.device_state.acl = list(filter(lambda a: a.fabric_index != session.local_fabric_index, self.device_state.acl)) + new_entries
+        self.device_state.acl = list(
+            filter(lambda a: a.fabric_index != session.local_fabric_index, self.device_state.acl)) + new_entries
         self.increment_data_version()
         self.attributes_changed([self.acl])
         self.device_state.save_state()
@@ -195,6 +206,7 @@ class AccessControl(cluster.Cluster):
     @access_control_entries_per_fabric.reader
     def read_access_control_entries_per_fabric(self):
         return 65535
+
 
 class BasicInformation(cluster.Cluster):
     cluster_id = 0x0028
@@ -411,8 +423,10 @@ class GeneralCommissioning(cluster.Cluster):
         )
 
     @commissioning_complete.handler
-    def handle_commissioning_complete(self, data: None, session: message.SessionContext) -> protocol_messages.CommissioningCompleteResponse:
-        if not session.local_fabric_index or not isinstance(session, message.SecureSessionContext) or session.session_type != message.SecureSessionType.CASE:
+    def handle_commissioning_complete(self, data: None,
+                                      session: message.SessionContext) -> protocol_messages.CommissioningCompleteResponse:
+        if not session.local_fabric_index or not isinstance(session,
+                                                            message.SecureSessionContext) or session.session_type != message.SecureSessionType.CASE:
             return protocol_messages.CommissioningCompleteResponse(
                 error_code=protocol_messages.CommissioningErrorEnum.InvalidAuthentication,
                 debug_text=""
@@ -444,9 +458,11 @@ class NetworkCommissioning(cluster.Cluster):
         0x0004, cluster.RWAccess.ReadWrite, cluster.Privileges.View, cluster.Privileges.Administer,
         n_nonvolatile=True
     )
-    last_networking_status = cluster.Attribute(0x0005, cluster.RWAccess.Read, cluster.Privileges.Administer, x_nullable=True)
+    last_networking_status = cluster.Attribute(0x0005, cluster.RWAccess.Read, cluster.Privileges.Administer,
+                                               x_nullable=True)
     last_network_id = cluster.Attribute(0x0006, cluster.RWAccess.Read, cluster.Privileges.Administer, x_nullable=True)
-    last_connect_error_value = cluster.Attribute(0x0007, cluster.RWAccess.Read, cluster.Privileges.Administer, x_nullable=True)
+    last_connect_error_value = cluster.Attribute(0x0007, cluster.RWAccess.Read, cluster.Privileges.Administer,
+                                                 x_nullable=True)
 
     @max_networks.reader
     def read_max_networks(self):
@@ -516,7 +532,8 @@ class AdministratorCommissioning(cluster.Cluster):
         return self.current_admin_vendor_id
 
     @open_commissioning_window.handler
-    def handle_open_commissioning_window(self, data: protocol_messages.OpenCommissioningWindow, session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+    def handle_open_commissioning_window(self, data: protocol_messages.OpenCommissioningWindow,
+                                         session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
         if self.device_state.in_commissioning_mode or self.enhanced_commissioning or self.basic_commissioning:
             return protocol_messages.CommissioningWindowStatusCodeEnum.Busy
 
@@ -525,7 +542,8 @@ class AdministratorCommissioning(cluster.Cluster):
             iterations=data.iterations,
             salt=data.salt,
         )
-        self.message_layer.secure_channel.pake_values_responder = crypto.CryptoPAKEValuesResponder.from_bytes(data.pake_passcode_verifier)
+        self.message_layer.secure_channel.pake_values_responder = crypto.CryptoPAKEValuesResponder.from_bytes(
+            data.pake_passcode_verifier)
         self.enhanced_commissioning = True
         self.device_state.in_commissioning_mode = True
         self.device_state.discriminator = data.discriminator
@@ -537,7 +555,8 @@ class AdministratorCommissioning(cluster.Cluster):
         return protocol_messages.CommissioningWindowStatusCodeEnum.Success
 
     @open_basic_commissioning_window.handler
-    def handle_open_basic_commissioning_window(self, data: protocol_messages.OpenBasicCommissioningWindow, session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
+    def handle_open_basic_commissioning_window(self, data: protocol_messages.OpenBasicCommissioningWindow,
+                                               session: message.SessionContext) -> protocol_messages.CommissioningWindowStatusCodeEnum:
         if self.device_state.in_commissioning_mode or self.enhanced_commissioning or self.basic_commissioning:
             return protocol_messages.CommissioningWindowStatusCodeEnum.Busy
 
@@ -625,8 +644,9 @@ class OperationalCredentials(cluster.Cluster):
         return [protocol_messages.NOCStruct(
             NOC=fabric.noc,
             ICAC=fabric.icac,
-            VVSC=None
-        ) for fabric in self.device_state.fabrics.values()]
+            VVSC=None,
+            fabric_index=idx,
+        ) for idx, fabric in enumerate(self.device_state.fabrics.values())]
 
     @fabrics.reader
     def read_fabrics(self):
@@ -639,8 +659,9 @@ class OperationalCredentials(cluster.Cluster):
             fabric_id=fabric.fabric_id,
             node_id=fabric.node_id,
             label=fabric.label,
-            vid_verification_statement=None
-        ) for fabric in self.device_state.fabrics.values()]
+            vid_verification_statement=None,
+            fabric_index=idx,
+        ) for idx, fabric in enumerate(self.device_state.fabrics.values())]
 
     @supported_fabrics.reader
     def read_supported_fabrics(self):
@@ -652,7 +673,7 @@ class OperationalCredentials(cluster.Cluster):
 
     @trusted_root_certificates.reader
     def read_trusted_root_certificates(self):
-        return [fabric.rcac for fabric in self.device_state.fabrics.values()]
+        return [fabric.rcac.encode_to_bytes() for fabric in self.device_state.fabrics.values()]
 
     @current_fabric_index.reader
     def read_current_fabric_index(self, session: message.SessionContext):
@@ -676,9 +697,9 @@ class OperationalCredentials(cluster.Cluster):
             self, data: protocol_messages.AttestationRequest, session: message.SessionContext
     ) -> protocol_messages.AttestationResponse:
         attestation_elements = protocol_messages.AttestationElements(
-            certification_declaration=b"",
-            timestamp=int(time.time()),
+            certification_declaration=self.device_state.certification_declaration or b"",
             attestation_nonce=data.attestation_nonce,
+            timestamp=int(time.time()),
             firmware_information=None
         ).encode_to_bytes()
         attestation_signature = self.sign_attestation(attestation_elements, session)
@@ -713,9 +734,10 @@ class OperationalCredentials(cluster.Cluster):
         pkey = cryptography.hazmat.primitives.asymmetric.ec.generate_private_key(
             cryptography.hazmat.primitives.asymmetric.ec.SECP256R1(),
         )
-        csr = cryptography.x509.CertificateSigningRequestBuilder() \
-            .subject_name(cryptography.x509.Name([])) \
-            .sign(pkey, algorithm=cryptography.hazmat.primitives.hashes.SHA256(), ecdsa_deterministic=True)
+        csr = cryptography.x509.CertificateSigningRequestBuilder().subject_name(cryptography.x509.Name([
+            # TODO: revert to blank Subject when matter.js fixes the bug preventing this
+            cryptography.x509.NameAttribute(cryptography.x509.oid.NameOID.COMMON_NAME, "Matter NOC"),
+        ])).sign(pkey, algorithm=cryptography.hazmat.primitives.hashes.SHA256(), ecdsa_deterministic=True)
 
         nocsr_elements = protocol_messages.NocsrElements(
             csr=csr.public_bytes(cryptography.hazmat.primitives.serialization.Encoding.DER),

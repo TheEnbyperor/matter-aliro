@@ -53,6 +53,9 @@ class DoorLockDevice(interaction_model.Endpoint):
         self.lock_cluster = cluster.DoorLockCluster(self)
         self.add_server(self.lock_cluster)
 
+    def add_reader(self, reader_id: bytes):
+        self.readers.add(reader_id)
+
     def load_state(self):
         if state := self._state.load_custom_state("door_lock"):
             self.locked = bool(state["locked"])
@@ -79,8 +82,6 @@ class DoorLockDevice(interaction_model.Endpoint):
                         persistent_key=base64.b64decode(credential["credential"]["persistent_key"]) if credential["credential"]["persistent_key"] else None,
                     )
                 self.credentials[protocol_messages.CredentialTypeEnum(int(credential_type["type"]))] = ct
-            for reader in state["readers"]:
-                self.readers.add(base64.b64decode(reader))
             if state["aliro_reader_config"]:
                 self.aliro_reader_config = AliroReaderConfig(
                     signing_key=cryptography.hazmat.primitives.serialization.load_der_private_key(
@@ -92,7 +93,6 @@ class DoorLockDevice(interaction_model.Endpoint):
             else:
                 self.aliro_reader_config = None
         else:
-            self.readers = set()
             self.locked = True
             self.users = {}
             self.credentials = {
