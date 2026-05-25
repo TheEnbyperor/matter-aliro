@@ -7,6 +7,11 @@ import asyncio
 import sys
 from cffi import FFI
 
+try:
+    from asyncio.queues import Queue, QueueShutDown
+except ImportError:
+    from backports.asyncio.queues import Queue, QueueShutDown
+
 ffi = FFI()
 if sys.platform == "darwin":
     ffi.cdef("""
@@ -162,7 +167,7 @@ class DTLSInternalConnection:
         self.ssl = ssl
         self.cid = cid
         self.init_done = False
-        self.read_queue = asyncio.Queue()
+        self.read_queue = Queue()
         self.extra_data = {}
 
     def __eq__(self, other):
@@ -185,7 +190,7 @@ class DTLSConnection:
     async def read(self):
         try:
             return await self._inner.read_queue.get()
-        except asyncio.QueueShutDown:
+        except QueueShutDown:
             return None
 
     async def write(self, data: bytes, loop=None):

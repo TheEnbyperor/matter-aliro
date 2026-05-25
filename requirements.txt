@@ -11,3 +11,4 @@ qrcode
 zeroconf
 pyparsing
 typing-extensions
+backports.asyncio.queues

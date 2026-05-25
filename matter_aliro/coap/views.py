@@ -8,6 +8,11 @@ import aiocoap.error
 import asn1tools
 from ..aliro import iso7816
 
+try:
+    from asyncio.queues import Queue, QueueShutDown
+except ImportError:
+    from backports.asyncio.queues import Queue, QueueShutDown
+
 aiocoap.ContentFormat.define(65000, media_type="application/vnd.as207960.nfc-frontend.config+uper")
 aiocoap.ContentFormat.define(65001, media_type="application/vnd.as207960.nfc-frontend.config+jer")
 aiocoap.ContentFormat.define(65002, media_type="application/vnd.as207960.nfc-frontend.new-target+uper")
@@ -90,7 +95,7 @@ def parse_request(request: aiocoap.Message, message_types: typing.Iterable[Messa
     raise aiocoap.error.UnsupportedContentFormat()
 
 class Target(iso7816.Terminal):
-    def __init__(self, uid: bytes, command_queue: asyncio.Queue, response_queue: asyncio.Queue):
+    def __init__(self, uid: bytes, command_queue: Queue, response_queue: Queue):
         self._uid = uid
         self._command_queue = command_queue
         self._response_queue = response_queue
@@ -111,7 +116,7 @@ class Target(iso7816.Terminal):
         await self._command_queue.put(request)
         try:
             return await self._response_queue.get()
-        except asyncio.QueueShutDown:
+        except QueueShutDown:
             raise RuntimeError("Target gone")
 
 class DeviceConfig(aiocoap.resource.ObservableResource):
@@ -125,8 +130,8 @@ class DeviceConfig(aiocoap.resource.ObservableResource):
 @dataclasses.dataclass
 class DeviceState:
     handler_task: asyncio.Task
-    command: asyncio.Queue
-    response: asyncio.Queue
+    command: Queue
+    response: Queue
 
 class Interact(aiocoap.resource.Resource):
     def __init__(self, handler: typing.Callable[[bytes, Target], typing.Awaitable[None]]):
@@ -150,8 +155,8 @@ class Interact(aiocoap.resource.Resource):
         if message_type == NEW_TARGET_MESSAGE:
             if device in self.devices:
                 self.devices[device].response.shutdown(True)
-            command_queue = asyncio.Queue(1)
-            response_queue = asyncio.Queue(1)
+            command_queue = Queue(1)
+            response_queue = Queue(1)
             state = DeviceState(
                 handler_task=asyncio.create_task(self.handle(
                     device,
@@ -183,7 +188,7 @@ class Interact(aiocoap.resource.Resource):
                 "data": command.data,
                 "expectedResponseLength": command.expected_response_length,
             }, APDU_COMMAND_MESSAGE)
-        except asyncio.QueueShutDown:
+        except QueueShutDown:
             return aiocoap.Message(code=aiocoap.Code.CHANGED)
 
     async def render_delete(self, request):
